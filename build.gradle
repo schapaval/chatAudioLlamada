@@ -1,31 +1,17 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url 'https://repo.zeroc.com/maven'
-        }
-    }
-    dependencies {
-        classpath 'com.zeroc:ice-builder-gradle:1.5.7'
-    }
+plugins {
+    id 'java'
+    id 'application'
 }
-
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'com.zeroc.gradle.ice-builder.slice'
 
 group = 'com.chatapp'
 version = '1.0.0'
 
 repositories {
     mavenCentral()
-    maven {
-        url 'https://repo.zeroc.com/maven'
-    }
 }
 
 dependencies {
-    implementation 'com.zeroc:ice:3.7.9'
+    implementation 'com.zeroc:ice:3.7.10'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
 }
 
@@ -33,28 +19,18 @@ application {
     mainClass = 'com.chatapp.server.Server'
 }
 
-slice {
-    java {
-        source = file('src/main/slice')
-        include '**/*.ice'
-        outputDir = file('build/generated/sources/slice')
-    }
-}
-
-
-
 sourceSets {
     main {
         java {
-            srcDirs = ['src/main/java', 'build/generated/sources/slice']
+            srcDirs = ['src/main/java']
         }
     }
 }
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
-    sourceCompatibility = '17'
-    targetCompatibility = '17'
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
 }
 
 task clientJar(type: Jar) {
@@ -77,7 +53,3 @@ task runClient(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.chatapp.client.Client'
 }
-
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'com.zeroc.gradle.ice-builder.slice'

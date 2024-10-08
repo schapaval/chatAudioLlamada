@@ -1,10 +1,13 @@
-// Server.java
 package com.chatapp.server;
 
 import ChatApp._ChatDisp;
 import ChatApp.ChatException;
+import ChatApp.StringSeqHelper;
+import ChatApp.ByteSeqHelper;
+
 import com.zeroc.Ice.Current;
 import com.zeroc.Ice.Util;
+
 
 public class Server extends com.zeroc.Ice.Application {
 
@@ -36,7 +39,7 @@ public class Server extends com.zeroc.Ice.Application {
         }
 
         @Override
-        public void createGroup(String groupName, String[] members, Current current) throws ChatException {
+        public void createGroup(String groupName, StringSeq members, Current current) throws ChatException {
             System.out.println("Group " + groupName + " created with members:");
             for (String member : members) {
                 System.out.println(" - " + member);
@@ -44,8 +47,9 @@ public class Server extends com.zeroc.Ice.Application {
         }
 
         @Override
-        public void sendVoiceNote(String sender, String recipient, byte[] voiceData, Current current) throws ChatException {
+        public void sendVoiceNote(String sender, String recipient, ByteSeq voiceData, Current current) throws ChatException {
             System.out.println(sender + " sent a voice note to " + recipient);
+            // Optionally, handle the voiceData (e.g., save it to a file)
         }
     }
 }
