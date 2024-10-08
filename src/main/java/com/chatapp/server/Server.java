@@ -7,49 +7,44 @@ import ChatApp.ByteSeqHelper;
 
 import com.zeroc.Ice.Current;
 import com.zeroc.Ice.Util;
-
+import com.zeroc.Ice.Communicator;
+import com.zeroc.Ice.ObjectAdapter;
+import com.zeroc.Ice.Object;
+import java.util.logging.Logger;
 
 public class Server extends com.zeroc.Ice.Application {
 
+    private static final Logger logger = Logger.getLogger(Server.class.getName());
+
     public static void main(String[] args) {
         Server app = new Server();
-        int status = app.main("Server", args, "config.server");
+        int status = 0;
+        try {
+            status = app.main("Server", args, "config.server");
+        } catch (Exception e) {
+            logger.severe("Exception in main: " + e.getMessage());
+            status = 1;
+        }
         System.exit(status);
     }
 
     @Override
     public int run(String[] args) {
-        com.zeroc.Ice.ObjectAdapter adapter = communicator().createObjectAdapter("ChatAdapter");
-        com.zeroc.Ice.Object chatServant = new ChatI();
-        adapter.add(chatServant, Util.stringToIdentity("ChatService"));
-        adapter.activate();
-        communicator().waitForShutdown();
-        return 0;
-    }
-
-    private class ChatI extends _ChatDisp {
-        @Override
-        public void sendMessage(String sender, String recipient, String content, Current current) throws ChatException {
-            System.out.println(sender + " sent message to " + recipient + ": " + content);
-        }
-
-        @Override
-        public void makeCall(String caller, String callee, Current current) throws ChatException {
-            System.out.println(caller + " is calling " + callee);
-        }
-
-        @Override
-        public void createGroup(String groupName, StringSeq members, Current current) throws ChatException {
-            System.out.println("Group " + groupName + " created with members:");
-            for (String member : members) {
-                System.out.println(" - " + member);
+        ObjectAdapter adapter = null;
+        try {
+            adapter = communicator().createObjectAdapter("ChatAdapter");
+            Object chatServant = new ChatI();
+            adapter.add(chatServant, Util.stringToIdentity("ChatService"));
+            adapter.activate();
+            communicator().waitForShutdown();
+        } catch (Exception e) {
+            logger.severe("Exception in run: " + e.getMessage());
+            return 1;
+        } finally {
+            if (adapter != null) {
+                adapter.destroy();
             }
         }
-
-        @Override
-        public void sendVoiceNote(String sender, String recipient, ByteSeq voiceData, Current current) throws ChatException {
-            System.out.println(sender + " sent a voice note to " + recipient);
-            // Optionally, handle the voiceData (e.g., save it to a file)
-        }
+        return 0;
     }
 }
