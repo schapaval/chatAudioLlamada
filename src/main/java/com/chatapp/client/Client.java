@@ -49,10 +49,24 @@ public class Client {
                         String message = scanner.nextLine().trim();
                         chat.sendMessage(username, recipient, message);
                         break;
-                    case 2:
+                    case 2: // Llamadas de voz
                         System.out.print("Callee: ");
                         String callee = scanner.nextLine().trim();
-                        chat.makeCall(username, callee);
+                    
+                        AudioHelper callAudioHelper = new AudioHelper();
+                        Thread sendAudioThread = new Thread(() -> {
+                            try {
+                                while (true) {
+                                    byte[] audioData = callAudioHelper.captureAudio(1); // Captura 1 segundo de audio
+                                    ByteSeq callVoiceData = new ByteSeq(audioData);
+                                    chat.sendVoiceCall(username, callee, callVoiceData); // Implementar este método en el servidor
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    
+                        sendAudioThread.start();
                         break;
                     case 3:
                         System.out.print("Group Name: ");
@@ -68,19 +82,29 @@ public class Client {
                     case 4:
                         System.out.print("Recipient: ");
                         String voiceRecipient = scanner.nextLine().trim();
-                        // For demonstration, we'll use an empty ByteSeq
-                        ByteSeq voiceData = new ByteSeq(); // In a real application, you would capture audio data
+                    
+                        // Captura el audio (por ejemplo, 5 segundos)
+                        AudioHelper audioHelper = new AudioHelper();
+                        byte[] audioData = audioHelper.captureAudio(5); // Captura 5 segundos de audio
+                    
+                        ByteSeq voiceData = new ByteSeq(audioData); // Convierte los bytes a ByteSeq
                         chat.sendVoiceNote(username, voiceRecipient, voiceData);
                         break;
+                    
                     case 5:
                         System.out.println("Exiting...");
                         return;
                     default:
                         System.out.println("Invalid option. Please select a number between 1 and 5.");
                 }
+                scanner.close();
             }
+            
         } catch (Exception e) {
             e.printStackTrace();
+            
         }
+
+        
     }
 }

@@ -490,4 +490,6 @@ public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
     void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData);
 
     void createGroup(String groupName, StringSeq members);
+
+    void sendVoiceCall(String username, String callee, ByteSeq callVoiceData);
 }

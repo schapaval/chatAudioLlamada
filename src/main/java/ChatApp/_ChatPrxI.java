@@ -26,13 +26,28 @@ public class _ChatPrxI extends com.zeroc.Ice._ObjectPrxI implements ChatPrx
 
     @Override
     public void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData) {
-        // TODO Auto-generated method stub
+        
+
         throw new UnsupportedOperationException("Unimplemented method 'sendVoiceNote'");
     }
 
     @Override
     public void createGroup(String groupName, StringSeq members) {
-        // TODO Auto-generated method stub
+        
+
+        
         throw new UnsupportedOperationException("Unimplemented method 'createGroup'");
     }
+
+    @Override
+    public void sendVoiceCall(String username, String callee, ByteSeq callVoiceData) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'sendVoiceCall'");
+    }
+
+    public static long getSerialversionuid() {
+        return serialVersionUID;
+    }
+
+
 }

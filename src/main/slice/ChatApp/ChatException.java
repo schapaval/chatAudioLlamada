@@ -1,4 +1,3 @@
-//
 // Copyright (c) ZeroC, Inc. All rights reserved.
 //
 //
@@ -17,6 +16,10 @@ package ChatApp;
 
 public class ChatException extends com.zeroc.Ice.UserException
 {
+
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
+    }
     public ChatException()
     {
         this.reason = "";
@@ -39,6 +42,7 @@ public class ChatException extends com.zeroc.Ice.UserException
         this.reason = reason;
     }
 
+    @Override
     public String ice_id()
     {
         return "::ChatApp::ChatException";
@@ -65,5 +69,5 @@ public class ChatException extends com.zeroc.Ice.UserException
     }
 
     /** @hidden */
-    public static final long serialVersionUID = -1254534298020021442L;
+    public static final long CHAT_EXCEPTION_SERIAL_VERSION_UID = -1254534298020021442L;
 }

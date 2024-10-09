@@ -1,5 +1,7 @@
 package com.chatapp.server;
 
-public class ChatI {
+import com.zeroc.Ice.Object;
+
+public class ChatI implements Object {
 
 }

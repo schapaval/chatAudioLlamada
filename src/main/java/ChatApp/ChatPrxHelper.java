@@ -10,7 +10,7 @@ import com.zeroc.Ice.ObjectPrx;
 public class ChatPrxHelper {
 
     public static ChatPrx checkedCast(ObjectPrx stringToProxy) {
-        // TODO Auto-generated method stub
+        
         throw new UnsupportedOperationException("Unimplemented method 'checkedCast'");
 
     }
