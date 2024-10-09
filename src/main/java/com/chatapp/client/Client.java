@@ -1,7 +1,10 @@
 package com.chatapp.client;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Scanner;
+
+import javax.sound.sampled.LineUnavailableException;
 
 import com.zeroc.Ice.Communicator;
 import com.zeroc.Ice.Util;
@@ -61,8 +64,7 @@ public class Client {
                                     ByteSeq callVoiceData = new ByteSeq(audioData);
                                     chat.sendVoiceCall(username, callee, callVoiceData); // Implementar este método en el servidor
                                 }
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                            } catch (IOException | LineUnavailableException e) {
                             }
                         });
                     
@@ -101,8 +103,6 @@ public class Client {
             }
             
         } catch (Exception e) {
-            e.printStackTrace();
-            
         }
 
         

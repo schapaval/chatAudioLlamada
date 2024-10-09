@@ -1,16 +1,13 @@
 package com.chatapp.server;
 
-import ChatApp._ChatDisp;
-import ChatApp.ChatException;
-import ChatApp.StringSeqHelper;
-import ChatApp.ByteSeqHelper;
 
-import com.zeroc.Ice.Current;
-import com.zeroc.Ice.Util;
-import com.zeroc.Ice.Communicator;
-import com.zeroc.Ice.ObjectAdapter;
-import com.zeroc.Ice.Object;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.zeroc.Ice.Object;
+import com.zeroc.Ice.ObjectAdapter;
+import com.zeroc.Ice.Util;
 
 public class Server extends com.zeroc.Ice.Application {
 
@@ -18,11 +15,11 @@ public class Server extends com.zeroc.Ice.Application {
 
     public static void main(String[] args) {
         Server app = new Server();
-        int status = 0;
+        int status;
         try {
             status = app.main("Server", args, "config.server");
         } catch (Exception e) {
-            logger.severe("Exception in main: " + e.getMessage());
+            logger.log(Level.SEVERE, "Exception in main: {0}", e.getMessage());
             status = 1;
         }
         System.exit(status);
@@ -38,7 +35,7 @@ public class Server extends com.zeroc.Ice.Application {
             adapter.activate();
             communicator().waitForShutdown();
         } catch (Exception e) {
-            logger.severe("Exception in run: " + e.getMessage());
+            logger.log(Level.SEVERE, "Exception in run: {0}", e.getMessage());
             return 1;
         } finally {
             if (adapter != null) {

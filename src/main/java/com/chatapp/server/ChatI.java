@@ -1,6 +1,5 @@
 package com.chatapp.server;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,14 +13,13 @@ import ChatApp.StringSeq;
 
 public class ChatI implements Object {
     // Mapa para gestionar grupos y sus miembros
-    private Map<String, Set<String>> groups = new HashMap<>();
+    private final Map<String, Set<String>> groups = new HashMap<>();
 
     // Método para crear un grupo de chat
+    @SuppressWarnings("unchecked")
     public void createGroup(String groupName, StringSeq members) {
         Set<String> memberSet = new HashSet<>();
-        for (String member : new ArrayList<String>((Collection<? extends String>) members).toArray(new String[0])) {
-            memberSet.add(member);
-        }
+        memberSet.addAll((Collection<? extends String>) members);
         groups.put(groupName, memberSet); // Almacena el grupo y sus miembros
         System.out.println("Group " + groupName + " created with members: " + members);
     }

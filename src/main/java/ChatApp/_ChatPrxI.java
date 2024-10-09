@@ -22,7 +22,10 @@ import com.chatapp.client.StringSeq;
 public class _ChatPrxI extends com.zeroc.Ice._ObjectPrxI implements ChatPrx
 {
     /** @hidden */
-    public static final long serialVersionUID = 0L;
+
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
+    }
 
     @Override
     public void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData) {
@@ -41,7 +44,6 @@ public class _ChatPrxI extends com.zeroc.Ice._ObjectPrxI implements ChatPrx
 
     @Override
     public void sendVoiceCall(String username, String callee, ByteSeq callVoiceData) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'sendVoiceCall'");
     }
 

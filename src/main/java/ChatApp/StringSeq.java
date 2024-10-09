@@ -8,4 +8,8 @@ package ChatApp;
 
 public class StringSeq {
 
+    public String[] toArray(String[] strings) {
+        throw new UnsupportedOperationException("Unimplemented method 'toArray'");
+    }
+
 }

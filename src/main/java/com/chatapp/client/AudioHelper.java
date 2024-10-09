@@ -11,8 +11,8 @@ import javax.sound.sampled.TargetDataLine;
 
 public class AudioHelper {
 
-    private AudioFormat audioFormat;
-    private TargetDataLine microphone;
+    private final AudioFormat audioFormat;
+    private final TargetDataLine microphone;
 
     public AudioHelper() throws LineUnavailableException {
         // Define un formato de audio para la captura (frecuencia de muestreo, tamaño de muestra, etc.)
@@ -23,18 +23,19 @@ public class AudioHelper {
 
     public byte[] captureAudio(int durationInSeconds) throws LineUnavailableException, IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        microphone.open(audioFormat);
-        microphone.start();
+        try (TargetDataLine mic = microphone) {
+            mic.open(audioFormat);
+            mic.start();
 
-        byte[] buffer = new byte[1024];
-        long end = System.currentTimeMillis() + (durationInSeconds * 1000);
-        while (System.currentTimeMillis() < end) {
-            int bytesRead = microphone.read(buffer, 0, buffer.length);
-            byteArrayOutputStream.write(buffer, 0, bytesRead);
+            byte[] buffer = new byte[1024];
+            long end = System.currentTimeMillis() + (durationInSeconds * 1000);
+            while (System.currentTimeMillis() < end) {
+                int bytesRead = mic.read(buffer, 0, buffer.length);
+                byteArrayOutputStream.write(buffer, 0, bytesRead);
+            }
+
+            mic.stop();
         }
-
-        microphone.stop();
-        microphone.close();
 
         return byteArrayOutputStream.toByteArray();
     }
