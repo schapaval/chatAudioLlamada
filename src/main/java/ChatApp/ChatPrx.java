@@ -15,6 +15,9 @@
 
 package ChatApp;
 
+import com.chatapp.client.ByteSeq;
+import com.chatapp.client.StringSeq;
+
 public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
 {
     default void sendMessage(String sender, String recipient, String content)
@@ -133,11 +136,7 @@ public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
         return f;
     }
 
-    default void sendVoiceNote(String sender, String recipient, byte[] voiceData)
-    {
-        sendVoiceNote(sender, recipient, voiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext);
-    }
-
+  
     default void sendVoiceNote(String sender, String recipient, byte[] voiceData, java.util.Map<String, String> context)
     {
         _iceI_sendVoiceNoteAsync(sender, recipient, voiceData, context, true).waitForResponse();
@@ -487,4 +486,8 @@ public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
     {
         return "::ChatApp::Chat";
     }
+
+    void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData);
+
+    void createGroup(String groupName, StringSeq members);
 }

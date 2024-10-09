@@ -1,16 +1,10 @@
 package com.chatapp.server;
 
-import ChatApp._ChatDisp;
-import ChatApp.ChatException;
-import ChatApp.StringSeqHelper;
-import ChatApp.ByteSeqHelper;
-
-import com.zeroc.Ice.Current;
-import com.zeroc.Ice.Util;
-import com.zeroc.Ice.Communicator;
-import com.zeroc.Ice.ObjectAdapter;
-import com.zeroc.Ice.Object;
 import java.util.logging.Logger;
+
+import com.zeroc.Ice.Object;
+import com.zeroc.Ice.ObjectAdapter;
+import com.zeroc.Ice.Util;
 
 public class Server extends com.zeroc.Ice.Application {
 
@@ -33,7 +27,7 @@ public class Server extends com.zeroc.Ice.Application {
         ObjectAdapter adapter = null;
         try {
             adapter = communicator().createObjectAdapter("ChatAdapter");
-            Object chatServant = new ChatI();
+            Object chatServant = (Object) new ChatI();
             adapter.add(chatServant, Util.stringToIdentity("ChatService"));
             adapter.activate();
             communicator().waitForShutdown();

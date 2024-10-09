@@ -15,9 +15,24 @@
 
 package ChatApp;
 
+import com.chatapp.client.ByteSeq;
+import com.chatapp.client.StringSeq;
+
 /** @hidden */
 public class _ChatPrxI extends com.zeroc.Ice._ObjectPrxI implements ChatPrx
 {
     /** @hidden */
     public static final long serialVersionUID = 0L;
+
+    @Override
+    public void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'sendVoiceNote'");
+    }
+
+    @Override
+    public void createGroup(String groupName, StringSeq members) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'createGroup'");
+    }
 }

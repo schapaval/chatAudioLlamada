@@ -34,9 +34,9 @@ sourceSets {
 slice {
     java {
         files = [file("src/main/slice/Chat.ice")]
-        args = "--tie"
+        args = ["--tie", "--compat"]
     }
-}
+}   
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'

@@ -1,17 +1,13 @@
 package com.chatapp.client;
 
-import ChatApp.ChatPrx;
-import ChatApp.ChatPrxHelper;
-import ChatApp.ChatException;
-import ChatApp.StringSeqHelper;
-import ChatApp.ByteSeqHelper;
+import java.util.Arrays;
+import java.util.Scanner;
 
 import com.zeroc.Ice.Communicator;
 import com.zeroc.Ice.Util;
-import com.zeroc.Ice.ObjectPrx;
-import com.zeroc.Ice.Current;
-import java.util.Arrays;
-import java.util.Scanner;
+
+import ChatApp.ChatPrx;
+import ChatApp.ChatPrxHelper;
 
 public class Client {
 
@@ -45,46 +41,42 @@ public class Client {
                     continue;
                 }
 
-                try {
-                    switch (choice) {
-                        case 1:
-                            System.out.print("Recipient: ");
-                            String recipient = scanner.nextLine().trim();
-                            System.out.print("Message: ");
-                            String message = scanner.nextLine().trim();
-                            chat.sendMessage(username, recipient, message);
-                            break;
-                        case 2:
-                            System.out.print("Callee: ");
-                            String callee = scanner.nextLine().trim();
-                            chat.makeCall(username, callee);
-                            break;
-                        case 3:
-                            System.out.print("Group Name: ");
-                            String groupName = scanner.nextLine().trim();
-                            System.out.print("Members (comma-separated): ");
-                            String[] memberArray = scanner.nextLine().trim().split(",");
-                            for (int i = 0; i < memberArray.length; i++) {
-                                memberArray[i] = memberArray[i].trim();
-                            }
-                            StringSeq members = new StringSeq(Arrays.asList(memberArray));
-                            chat.createGroup(groupName, members);
-                            break;
-                        case 4:
-                            System.out.print("Recipient: ");
-                            String voiceRecipient = scanner.nextLine().trim();
-                            // For demonstration, we'll use an empty ByteSeq
-                            ByteSeq voiceData = new ByteSeq(); // In a real application, you would capture audio data
-                            chat.sendVoiceNote(username, voiceRecipient, voiceData);
-                            break;
-                        case 5:
-                            System.out.println("Exiting...");
-                            return;
-                        default:
-                            System.out.println("Invalid option. Please select a number between 1 and 5.");
-                    }
-                } catch (ChatException e) {
-                    System.out.println("An error occurred: " + e.reason);
+                switch (choice) {
+                    case 1:
+                        System.out.print("Recipient: ");
+                        String recipient = scanner.nextLine().trim();
+                        System.out.print("Message: ");
+                        String message = scanner.nextLine().trim();
+                        chat.sendMessage(username, recipient, message);
+                        break;
+                    case 2:
+                        System.out.print("Callee: ");
+                        String callee = scanner.nextLine().trim();
+                        chat.makeCall(username, callee);
+                        break;
+                    case 3:
+                        System.out.print("Group Name: ");
+                        String groupName = scanner.nextLine().trim();
+                        System.out.print("Members (comma-separated): ");
+                        String[] memberArray = scanner.nextLine().trim().split(",");
+                        for (int i = 0; i < memberArray.length; i++) {
+                            memberArray[i] = memberArray[i].trim();
+                        }
+                        StringSeq members = new StringSeq(Arrays.asList(memberArray));
+                        chat.createGroup(groupName, members);
+                        break;
+                    case 4:
+                        System.out.print("Recipient: ");
+                        String voiceRecipient = scanner.nextLine().trim();
+                        // For demonstration, we'll use an empty ByteSeq
+                        ByteSeq voiceData = new ByteSeq(); // In a real application, you would capture audio data
+                        chat.sendVoiceNote(username, voiceRecipient, voiceData);
+                        break;
+                    case 5:
+                        System.out.println("Exiting...");
+                        return;
+                    default:
+                        System.out.println("Invalid option. Please select a number between 1 and 5.");
                 }
             }
         } catch (Exception e) {
