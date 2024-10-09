@@ -3,9 +3,9 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
         maven {
-            url 'https://artifacts.zeroc.com/ice/gradle'
+            url "https://plugins.gradle.org/m2/"
         }
     }
 }
 
-rootProject.name = 'chatapp'
+rootProject.name = 'chatAudioLlamada'
