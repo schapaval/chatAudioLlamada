@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'application'
-    id "com.zeroc.gradle.ice-builder.slice" version "1.5.0"
+    id "com.zeroc.gradle.ice-builder.slice" version "1.4.0"  // Usa la versión 1.4.0
 }
 
 group = 'com.chatapp'
@@ -36,7 +36,13 @@ slice {
         files = [file("src/main/slice/Chat.ice")]
         args = ["--tie", "--compat"]
     }
-}   
+
+    // Solución temporal para el problema con 'timestamps'
+    tasks.withType(com.zeroc.gradle.icebuilder.slice.SliceTask) {
+        timestamps = null // O marca como @Internal si es necesario
+    }
+}
+
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
