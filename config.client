@@ -1,0 +1,7 @@
+# Configuración del adaptador
+ChatAdapter.Endpoints=tcp -h 127.0.0.1 -p 10001
+
+
+# Opcionalmente, configura el tiempo de espera (timeout) y el tamaño del buffer
+Ice.ThreadPool.Server.Size=5
+Ice.ThreadPool.Server.SizeMax=10

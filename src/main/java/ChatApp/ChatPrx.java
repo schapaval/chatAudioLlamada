@@ -15,85 +15,84 @@
 
 package ChatApp;
 
-import com.chatapp.client.ByteSeq;
-import com.chatapp.client.StringSeq;
-
 public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
 {
-    default void sendMessage(String sender, String recipient, String content)
+    default void sendMessage(String sender, String recipient, String message)
     {
-        sendMessage(sender, recipient, content, com.zeroc.Ice.ObjectPrx.noExplicitContext);
+        sendMessage(sender, recipient, message, com.zeroc.Ice.ObjectPrx.noExplicitContext);
     }
 
-    default void sendMessage(String sender, String recipient, String content, java.util.Map<String, String> context)
+    default void sendMessage(String sender, String recipient, String message, java.util.Map<String, String> context)
     {
-        _iceI_sendMessageAsync(sender, recipient, content, context, true).waitForResponse();
+        _iceI_sendMessageAsync(sender, recipient, message, context, true).waitForResponse();
     }
 
-    default java.util.concurrent.CompletableFuture<Void> sendMessageAsync(String sender, String recipient, String content)
+    default java.util.concurrent.CompletableFuture<Void> sendMessageAsync(String sender, String recipient, String message)
     {
-        return _iceI_sendMessageAsync(sender, recipient, content, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
+        return _iceI_sendMessageAsync(sender, recipient, message, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
     }
 
-    default java.util.concurrent.CompletableFuture<Void> sendMessageAsync(String sender, String recipient, String content, java.util.Map<String, String> context)
+    default java.util.concurrent.CompletableFuture<Void> sendMessageAsync(String sender, String recipient, String message, java.util.Map<String, String> context)
     {
-        return _iceI_sendMessageAsync(sender, recipient, content, context, false);
+        return _iceI_sendMessageAsync(sender, recipient, message, context, false);
     }
 
     /**
      * @hidden
      * @param iceP_sender -
      * @param iceP_recipient -
-     * @param iceP_content -
+     * @param iceP_message -
      * @param context -
      * @param sync -
      * @return -
      **/
-    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_sendMessageAsync(String iceP_sender, String iceP_recipient, String iceP_content, java.util.Map<String, String> context, boolean sync)
+    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_sendMessageAsync(String iceP_sender, String iceP_recipient, String iceP_message, java.util.Map<String, String> context, boolean sync)
     {
         com.zeroc.IceInternal.OutgoingAsync<Void> f = new com.zeroc.IceInternal.OutgoingAsync<>(this, "sendMessage", null, sync, null);
         f.invoke(false, context, null, ostr -> {
                      ostr.writeString(iceP_sender);
                      ostr.writeString(iceP_recipient);
-                     ostr.writeString(iceP_content);
+                     ostr.writeString(iceP_message);
                  }, null);
         return f;
     }
 
-    default void makeCall(String caller, String callee)
+    default void sendVoiceCall(String username, String callee, byte[] callVoiceData)
     {
-        makeCall(caller, callee, com.zeroc.Ice.ObjectPrx.noExplicitContext);
+        sendVoiceCall(username, callee, callVoiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext);
     }
 
-    default void makeCall(String caller, String callee, java.util.Map<String, String> context)
+    default void sendVoiceCall(String username, String callee, byte[] callVoiceData, java.util.Map<String, String> context)
     {
-        _iceI_makeCallAsync(caller, callee, context, true).waitForResponse();
+        _iceI_sendVoiceCallAsync(username, callee, callVoiceData, context, true).waitForResponse();
     }
 
-    default java.util.concurrent.CompletableFuture<Void> makeCallAsync(String caller, String callee)
+    default java.util.concurrent.CompletableFuture<Void> sendVoiceCallAsync(String username, String callee, byte[] callVoiceData)
     {
-        return _iceI_makeCallAsync(caller, callee, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
+        return _iceI_sendVoiceCallAsync(username, callee, callVoiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
     }
 
-    default java.util.concurrent.CompletableFuture<Void> makeCallAsync(String caller, String callee, java.util.Map<String, String> context)
+    default java.util.concurrent.CompletableFuture<Void> sendVoiceCallAsync(String username, String callee, byte[] callVoiceData, java.util.Map<String, String> context)
     {
-        return _iceI_makeCallAsync(caller, callee, context, false);
+        return _iceI_sendVoiceCallAsync(username, callee, callVoiceData, context, false);
     }
 
     /**
      * @hidden
-     * @param iceP_caller -
+     * @param iceP_username -
      * @param iceP_callee -
+     * @param iceP_callVoiceData -
      * @param context -
      * @param sync -
      * @return -
      **/
-    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_makeCallAsync(String iceP_caller, String iceP_callee, java.util.Map<String, String> context, boolean sync)
+    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_sendVoiceCallAsync(String iceP_username, String iceP_callee, byte[] iceP_callVoiceData, java.util.Map<String, String> context, boolean sync)
     {
-        com.zeroc.IceInternal.OutgoingAsync<Void> f = new com.zeroc.IceInternal.OutgoingAsync<>(this, "makeCall", null, sync, null);
+        com.zeroc.IceInternal.OutgoingAsync<Void> f = new com.zeroc.IceInternal.OutgoingAsync<>(this, "sendVoiceCall", null, sync, null);
         f.invoke(false, context, null, ostr -> {
-                     ostr.writeString(iceP_caller);
+                     ostr.writeString(iceP_username);
                      ostr.writeString(iceP_callee);
+                     ostr.writeByteSeq(iceP_callVoiceData);
                  }, null);
         return f;
     }
@@ -136,36 +135,40 @@ public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
         return f;
     }
 
-  
-    default void sendVoiceNote(String sender, String recipient, byte[] voiceData, java.util.Map<String, String> context)
+    default void sendVoiceNote(String username, String recipient, byte[] voiceData)
     {
-        _iceI_sendVoiceNoteAsync(sender, recipient, voiceData, context, true).waitForResponse();
+        sendVoiceNote(username, recipient, voiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext);
     }
 
-    default java.util.concurrent.CompletableFuture<Void> sendVoiceNoteAsync(String sender, String recipient, byte[] voiceData)
+    default void sendVoiceNote(String username, String recipient, byte[] voiceData, java.util.Map<String, String> context)
     {
-        return _iceI_sendVoiceNoteAsync(sender, recipient, voiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
+        _iceI_sendVoiceNoteAsync(username, recipient, voiceData, context, true).waitForResponse();
     }
 
-    default java.util.concurrent.CompletableFuture<Void> sendVoiceNoteAsync(String sender, String recipient, byte[] voiceData, java.util.Map<String, String> context)
+    default java.util.concurrent.CompletableFuture<Void> sendVoiceNoteAsync(String username, String recipient, byte[] voiceData)
     {
-        return _iceI_sendVoiceNoteAsync(sender, recipient, voiceData, context, false);
+        return _iceI_sendVoiceNoteAsync(username, recipient, voiceData, com.zeroc.Ice.ObjectPrx.noExplicitContext, false);
+    }
+
+    default java.util.concurrent.CompletableFuture<Void> sendVoiceNoteAsync(String username, String recipient, byte[] voiceData, java.util.Map<String, String> context)
+    {
+        return _iceI_sendVoiceNoteAsync(username, recipient, voiceData, context, false);
     }
 
     /**
      * @hidden
-     * @param iceP_sender -
+     * @param iceP_username -
      * @param iceP_recipient -
      * @param iceP_voiceData -
      * @param context -
      * @param sync -
      * @return -
      **/
-    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_sendVoiceNoteAsync(String iceP_sender, String iceP_recipient, byte[] iceP_voiceData, java.util.Map<String, String> context, boolean sync)
+    default com.zeroc.IceInternal.OutgoingAsync<Void> _iceI_sendVoiceNoteAsync(String iceP_username, String iceP_recipient, byte[] iceP_voiceData, java.util.Map<String, String> context, boolean sync)
     {
         com.zeroc.IceInternal.OutgoingAsync<Void> f = new com.zeroc.IceInternal.OutgoingAsync<>(this, "sendVoiceNote", null, sync, null);
         f.invoke(false, context, null, ostr -> {
-                     ostr.writeString(iceP_sender);
+                     ostr.writeString(iceP_username);
                      ostr.writeString(iceP_recipient);
                      ostr.writeByteSeq(iceP_voiceData);
                  }, null);
@@ -486,10 +489,4 @@ public interface ChatPrx extends com.zeroc.Ice.ObjectPrx
     {
         return "::ChatApp::Chat";
     }
-
-    void sendVoiceNote(String username, String voiceRecipient, ByteSeq voiceData);
-
-    void createGroup(String groupName, StringSeq members);
-
-    void sendVoiceCall(String username, String callee, ByteSeq callVoiceData);
 }

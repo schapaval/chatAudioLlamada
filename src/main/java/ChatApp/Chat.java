@@ -17,13 +17,13 @@ package ChatApp;
 
 public interface Chat extends com.zeroc.Ice.Object
 {
-    void sendMessage(String sender, String recipient, String content, com.zeroc.Ice.Current current);
+    void sendMessage(String sender, String recipient, String message, com.zeroc.Ice.Current current);
 
-    void makeCall(String caller, String callee, com.zeroc.Ice.Current current);
+    void sendVoiceCall(String username, String callee, byte[] callVoiceData, com.zeroc.Ice.Current current);
 
     void createGroup(String groupName, String[] members, com.zeroc.Ice.Current current);
 
-    void sendVoiceNote(String sender, String recipient, byte[] voiceData, com.zeroc.Ice.Current current);
+    void sendVoiceNote(String username, String recipient, byte[] voiceData, com.zeroc.Ice.Current current);
 
     /** @hidden */
     static final String[] _iceIds =
@@ -62,12 +62,12 @@ public interface Chat extends com.zeroc.Ice.Object
         com.zeroc.Ice.InputStream istr = inS.startReadParams();
         String iceP_sender;
         String iceP_recipient;
-        String iceP_content;
+        String iceP_message;
         iceP_sender = istr.readString();
         iceP_recipient = istr.readString();
-        iceP_content = istr.readString();
+        iceP_message = istr.readString();
         inS.endReadParams();
-        obj.sendMessage(iceP_sender, iceP_recipient, iceP_content, current);
+        obj.sendMessage(iceP_sender, iceP_recipient, iceP_message, current);
         return inS.setResult(inS.writeEmptyParams());
     }
 
@@ -78,16 +78,18 @@ public interface Chat extends com.zeroc.Ice.Object
      * @param current -
      * @return -
     **/
-    static java.util.concurrent.CompletionStage<com.zeroc.Ice.OutputStream> _iceD_makeCall(Chat obj, final com.zeroc.IceInternal.Incoming inS, com.zeroc.Ice.Current current)
+    static java.util.concurrent.CompletionStage<com.zeroc.Ice.OutputStream> _iceD_sendVoiceCall(Chat obj, final com.zeroc.IceInternal.Incoming inS, com.zeroc.Ice.Current current)
     {
         com.zeroc.Ice.Object._iceCheckMode(null, current.mode);
         com.zeroc.Ice.InputStream istr = inS.startReadParams();
-        String iceP_caller;
+        String iceP_username;
         String iceP_callee;
-        iceP_caller = istr.readString();
+        byte[] iceP_callVoiceData;
+        iceP_username = istr.readString();
         iceP_callee = istr.readString();
+        iceP_callVoiceData = istr.readByteSeq();
         inS.endReadParams();
-        obj.makeCall(iceP_caller, iceP_callee, current);
+        obj.sendVoiceCall(iceP_username, iceP_callee, iceP_callVoiceData, current);
         return inS.setResult(inS.writeEmptyParams());
     }
 
@@ -122,14 +124,14 @@ public interface Chat extends com.zeroc.Ice.Object
     {
         com.zeroc.Ice.Object._iceCheckMode(null, current.mode);
         com.zeroc.Ice.InputStream istr = inS.startReadParams();
-        String iceP_sender;
+        String iceP_username;
         String iceP_recipient;
         byte[] iceP_voiceData;
-        iceP_sender = istr.readString();
+        iceP_username = istr.readString();
         iceP_recipient = istr.readString();
         iceP_voiceData = istr.readByteSeq();
         inS.endReadParams();
-        obj.sendVoiceNote(iceP_sender, iceP_recipient, iceP_voiceData, current);
+        obj.sendVoiceNote(iceP_username, iceP_recipient, iceP_voiceData, current);
         return inS.setResult(inS.writeEmptyParams());
     }
 
@@ -141,8 +143,8 @@ public interface Chat extends com.zeroc.Ice.Object
         "ice_ids",
         "ice_isA",
         "ice_ping",
-        "makeCall",
         "sendMessage",
+        "sendVoiceCall",
         "sendVoiceNote"
     };
 
@@ -181,11 +183,11 @@ public interface Chat extends com.zeroc.Ice.Object
             }
             case 5:
             {
-                return _iceD_makeCall(this, in, current);
+                return _iceD_sendMessage(this, in, current);
             }
             case 6:
             {
-                return _iceD_sendMessage(this, in, current);
+                return _iceD_sendVoiceCall(this, in, current);
             }
             case 7:
             {

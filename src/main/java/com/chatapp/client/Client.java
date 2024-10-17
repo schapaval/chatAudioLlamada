@@ -52,24 +52,26 @@ public class Client {
                         String message = scanner.nextLine().trim();
                         chat.sendMessage(username, recipient, message);
                         break;
-                    case 2: // Llamadas de voz
+
+                    case 2: // Voice Call
                         System.out.print("Callee: ");
                         String callee = scanner.nextLine().trim();
-                    
+
                         AudioHelper callAudioHelper = new AudioHelper();
                         Thread sendAudioThread = new Thread(() -> {
                             try {
                                 while (true) {
-                                    byte[] audioData = callAudioHelper.captureAudio(1); // Captura 1 segundo de audio
-                                    ByteSeq callVoiceData = new ByteSeq(audioData);
-                                    chat.sendVoiceCall(username, callee, callVoiceData); // Implementar este método en el servidor
+                                    byte[] audioData = callAudioHelper.captureAudio(1); // Capture 1 second of audio
+                                    chat.sendVoiceCall(username, callee, audioData); // Send audio data directly
                                 }
                             } catch (IOException | LineUnavailableException e) {
+                                e.printStackTrace();
                             }
                         });
-                    
+
                         sendAudioThread.start();
                         break;
+
                     case 3:
                         System.out.print("Group Name: ");
                         String groupName = scanner.nextLine().trim();
@@ -78,33 +80,31 @@ public class Client {
                         for (int i = 0; i < memberArray.length; i++) {
                             memberArray[i] = memberArray[i].trim();
                         }
-                        StringSeq members = new StringSeq(Arrays.asList(memberArray));
-                        chat.createGroup(groupName, members);
+                        chat.createGroup(groupName, memberArray); // Use String[]
                         break;
+
                     case 4:
                         System.out.print("Recipient: ");
                         String voiceRecipient = scanner.nextLine().trim();
-                    
-                        // Captura el audio (por ejemplo, 5 segundos)
+
+                        // Capture 5 seconds of audio
                         AudioHelper audioHelper = new AudioHelper();
-                        byte[] audioData = audioHelper.captureAudio(5); // Captura 5 segundos de audio
-                    
-                        ByteSeq voiceData = new ByteSeq(audioData); // Convierte los bytes a ByteSeq
-                        chat.sendVoiceNote(username, voiceRecipient, voiceData);
+                        byte[] audioData = audioHelper.captureAudio(5);
+
+                        chat.sendVoiceNote(username, voiceRecipient, audioData); // Send byte[]
                         break;
-                    
+
                     case 5:
                         System.out.println("Exiting...");
+                        scanner.close();
                         return;
+
                     default:
                         System.out.println("Invalid option. Please select a number between 1 and 5.");
                 }
-                scanner.close();
             }
-            
         } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        
     }
 }

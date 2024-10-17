@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'application'
-    id "com.zeroc.gradle.ice-builder.slice" version "1.4.0"
+    id 'com.zeroc.gradle.ice-builder.slice' version '1.4.0'
 }
 
 group = 'com.chatapp'
@@ -9,9 +9,7 @@ version = '1.0.0'
 
 repositories {
     mavenCentral()
-    maven {
-        url "https://repo.zeroc.com/nexus/content/repositories/releases"
-    }
+    maven { url "https://repo.zeroc.com/nexus/content/repositories/releases" }
 }
 
 dependencies {
@@ -31,17 +29,24 @@ sourceSets {
     }
 }
 
+
 slice {
     java {
         files = [file("src/main/slice/Chat.ice")]
         args = ["--tie", "--compat"]
     }
-
-    // Solución temporal para el problema con 'timestamps'
-    tasks.withType(com.zeroc.gradle.icebuilder.slice.SliceTask) {
-        timestamps = null // O marca como @Internal si es necesario
-    }
 }
+
+task customCompileSlice(type: Exec) {
+    description = "Compila los archivos .ice utilizando ZeroC Slice"
+    group = "build"
+
+    commandLine 'slice2java', '--output-dir', 'src/main/java', 'src/main/slice/Chat.ice'
+}
+
+compileJava.dependsOn customCompileSlice
+
+
 
 
 tasks.withType(JavaCompile) {
