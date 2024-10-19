@@ -5,4 +5,10 @@ To run the project, you can use the following command:
 ./gradlew clean build
 
 ```
+
+Para correr el server.java y el client.java es asi: 
+```shell
+java -cp build/classes/java/main server.Server
+java -cp build/classes/java/main client.Client
+```
 https://github.com/schapaval/chatAudioLlamada
