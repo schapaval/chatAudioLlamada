@@ -8,7 +8,7 @@ public class Server {
         int port = 12345; // Puerto en el que el servidor escuchará
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Servidor escuchando en el puerto " + port);
-            
+
             while (true) {
                 Socket clientSocket = serverSocket.accept(); // Acepta la conexión del cliente
                 System.out.println("Cliente conectado: " + clientSocket.getInetAddress());
@@ -33,11 +33,19 @@ class ClientHandler extends Thread {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-            out.println("Hola mundo desde el servidor");
+            out.println("Bienvenido al servidor de chat");
             String message;
             while ((message = in.readLine()) != null) {
                 System.out.println("Mensaje del cliente: " + message);
-                out.println("Echo: " + message); // Responde al cliente
+                if (message.startsWith("Texto: ")) {
+                    out.println("Mensaje de texto recibido");
+                } else if (message.startsWith("Nota de voz")) {
+                    out.println("Nota de voz recibida");
+                } else if (message.startsWith("Llamada")) {
+                    out.println("Llamada realizada correctamente");
+                } else {
+                    out.println("Comando no reconocido");
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
