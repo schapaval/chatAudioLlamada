@@ -1,1 +1,11 @@
 Texto: holak
+Texto privado a Juan: Hola, Juan, como estas hoy?
+Texto privado a Kias: Hablamelo perri
+Texto privado a ll: Hablamelooo
+Texto privado a j: s
+Texto privado : Juan : Este es mi cancion de despedidad
+Texto privado : Juan: Este es mi cancion de despedidad
+Texto privado: Juan: Este es mi cancion de despedidad
+Texto privado: Pepe: Hablamelo caramelito
+Texto privado: Juan: Hablamelo mi caramelo!!!
+Texto privado: Pepe: Contamelo mi p

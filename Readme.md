@@ -17,3 +17,11 @@ java -cp build/classes/java/main server.Server
 java -cp build/classes/java/main client.Client
 ```
 https://github.com/schapaval/chatAudioLlamada
+
+#Comandos
+
+##Mensajes privados
+
+```shell
+Texto privado: [Destinatario]: [Mensaje]
+```

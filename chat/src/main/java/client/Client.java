@@ -15,53 +15,33 @@ public class Client {
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
+
+            // Leer el mensaje del servidor para ingresar el username
+            String serverPrompt = in.readLine();
+            System.out.println("Respuesta del servidor: " + serverPrompt);
+
+            // Enviar el username al servidor
+            String username = scanner.nextLine();
+            out.println(username);
+
+            // Esperar la bienvenida del servidor
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
 
-            boolean exit = false;
-            while (!exit) {
-                System.out.println("\nMenú:");
-                System.out.println("1. Crear grupo de chat");
-                System.out.println("2. Enviar mensaje de texto");
-                System.out.println("3. Enviar nota de voz");
-                System.out.println("4. Realizar llamada");
-                System.out.println("5. Salir");
+            // Iniciar el hilo para leer mensajes del servidor
+            new Thread(new ReadMessages(in)).start();
 
-                System.out.print("Selecciona una opción: ");
-                int option = Integer.parseInt(scanner.nextLine());
+            // Hilo principal para enviar mensajes al servidor
+            while (true) {
+                String message = scanner.nextLine();
+                out.println(message);  // Envía el mensaje al servidor
 
-                switch (option) {
-                    case 1:
-                        System.out.println("Función no implementada: Crear grupo de chat");
-                        break;
-                    case 2:
-                        System.out.print("Escribe tu mensaje de texto: ");
-                        String message = scanner.nextLine();
-                        out.println("Texto: " + message);
-                        response = in.readLine();
-                        System.out.println("Respuesta del servidor: " + response);
-                        guardarHistorial("Texto: " + message);
-                        break;
-                    case 3:
-                        System.out.println("Simulando envío de nota de voz...");
-                        out.println("Nota de voz enviada");
-                        response = in.readLine();
-                        System.out.println("Respuesta del servidor: " + response);
-                        guardarHistorial("Nota de voz enviada");
-                        break;
-                    case 4:
-                        System.out.println("Simulando llamada...");
-                        out.println("Llamada realizada");
-                        response = in.readLine();
-                        System.out.println("Respuesta del servidor: " + response);
-                        guardarHistorial("Llamada realizada");
-                        break;
-                    case 5:
-                        exit = true;
-                        System.out.println("Saliendo...");
-                        break;
-                    default:
-                        System.out.println("Opción no válida.");
+                // Guardar en el historial de mensajes enviados
+                guardarHistorial(message);
+                
+                if (message.equalsIgnoreCase("salir")) {
+                    System.out.println("Desconectando del servidor...");
+                    break;  // Sale del ciclo cuando el cliente escribe "salir"
                 }
             }
 
@@ -78,6 +58,27 @@ public class Client {
             out.println(mensaje);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+}
+
+class ReadMessages implements Runnable {
+    private BufferedReader in;
+
+    public ReadMessages(BufferedReader in) {
+        this.in = in;
+    }
+
+    @Override
+    public void run() {
+        String message;
+        try {
+            // Mientras recibe mensajes, los imprime en consola
+            while ((message = in.readLine()) != null) {
+                System.out.println("\nMensaje recibido del servidor: " + message);
+            }
+        } catch (IOException e) {
+            System.out.println("Conexión cerrada con el servidor.");
         }
     }
 }
