@@ -84,12 +84,23 @@ class ClientHandler extends Thread {
 
     public void sendAudio(File audioFile, String senderUsername) {
         try {
-            out.println("Recibiendo audio de " + senderUsername);
-            // Aquí puedes implementar la lógica para enviar el archivo de audio si es necesario
-        } catch (Exception e) {
+            out.println("AUDIO"); // Indicar que se enviará un archivo de audio
+            out.println(senderUsername); // Enviar el nombre del remitente
+            out.println(audioFile.getName()); // Enviar el nombre del archivo
+
+            byte[] buffer = new byte[4096];
+            try (FileInputStream fis = new FileInputStream(audioFile)) {
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    this.socket.getOutputStream().write(buffer, 0, bytesRead); // Usar `this.socket`
+                }
+            }
+            this.socket.getOutputStream().flush(); // Usar `this.socket`
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 
     @Override
     public void run() {

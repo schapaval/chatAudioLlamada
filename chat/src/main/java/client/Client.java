@@ -7,15 +7,21 @@ import java.util.Scanner;
 
 public class Client {
     private static final String AUDIO_FORMAT = "audio.wav";
+    private Socket socket; // Definimos el socket como variable de instancia
 
     public static void main(String[] args) {
+        new Client().startClient(); // Iniciar el cliente
+    }
+
+    public void startClient() {
         String host = "localhost"; // Cambia a la IP del servidor si es remoto
         int port = 12345; // Puerto al que el cliente se conectará
         Scanner scanner = new Scanner(System.in);
 
-        try (Socket socket = new Socket(host, port);
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+        try {
+            socket = new Socket(host, port); // Inicializa el socket aquí
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
 
@@ -32,11 +38,13 @@ public class Client {
             System.out.println("Respuesta del servidor: " + response);
 
             // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new ReadMessages(in)).start();
+            new Thread(new ReadMessages(in, socket)).start(); // Pasa el socket a ReadMessages
 
             // Hilo principal para enviar mensajes al servidor
             while (true) {
-                System.out.println("\nEscribe tu mensaje (o usa '/privado username mensaje' para mensaje privado, '/privadoaudio username' para audio privado, 'audio' para mensaje de voz público):");
+                System.out.println("\nEscribe tu mensaje (o usa '/privado username mensaje' para mensaje privado o \n" +
+                        "'/privadoaudio username' para audio privado o\n" +
+                        " 'audio' para mensaje de voz público):\n");
                 String message = scanner.nextLine();
 
                 if (message.equalsIgnoreCase("audio")) {
@@ -133,9 +141,11 @@ public class Client {
 // Clase para manejar los mensajes entrantes del servidor
 class ReadMessages implements Runnable {
     private BufferedReader in;
+    private Socket socket; // Definir el socket como variable de instancia
 
-    public ReadMessages(BufferedReader in) {
+    public ReadMessages(BufferedReader in, Socket socket) { // Pasar el socket al constructor
         this.in = in;
+        this.socket = socket; // Asignar el socket
     }
 
     @Override
@@ -143,7 +153,26 @@ class ReadMessages implements Runnable {
         String message;
         try {
             while ((message = in.readLine()) != null) {
-                System.out.println("\nMensaje recibido: " + message);
+                if (message.equals("AUDIO")) {
+                    String senderUsername = in.readLine(); // Nombre del remitente
+                    String fileName = in.readLine(); // Nombre del archivo
+                    File receivedAudio = new File(fileName);
+
+                    try (FileOutputStream fos = new FileOutputStream(receivedAudio)) {
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
+                            if (bytesRead < buffer.length) {
+                                break; // Archivo completo
+                            }
+                        }
+                    }
+                    System.out.println("Audio recibido de " + senderUsername + ": " + fileName);
+                } else {
+                    // Es un mensaje de texto
+                    System.out.println("\nMensaje recibido: " + message);
+                }
             }
         } catch (IOException e) {
             System.out.println("Error leyendo mensajes del servidor.");
