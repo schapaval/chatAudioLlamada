@@ -115,7 +115,6 @@ public class Client {
         return audioFile;
     }
 
-
     // Método para enviar un archivo al servidor
     private void enviarArchivo(File file, Socket socket) {
         try {
@@ -135,4 +134,40 @@ public class Client {
         }
     }
 
+    // Clase interna para manejar la lectura de mensajes del servidor
+    private class ReadMessages implements Runnable {
+        private BufferedReader in;
+
+        public ReadMessages(BufferedReader in) {
+            this.in = in;
+        }
+
+        @Override
+        public void run() {
+            try {
+                String message;
+                while ((message = in.readLine()) != null) {
+                    System.out.println("Mensaje del servidor: " + message);
+                    handleServerMessage(message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void handleServerMessage(String message) {
+            if (message.startsWith("CALL_REQUEST|")) {
+                String[] parts = message.split("\\|");
+                String callId = parts[1];
+                String caller = parts[2];
+                System.out.println("Llamada entrante de " + caller);
+                System.out.println("Usa /aceptar para contestar o /rechazar para declinar");
+            } else if (message.startsWith("CALL_STARTED|")) {
+                System.out.println("¡Llamada iniciada! Puedes empezar a hablar");
+                System.out.println("Usa /colgar para terminar la llamada");
+            } else if (message.startsWith("CALL_ENDED|")) {
+                System.out.println("Llamada terminada");
+            }
+        }
+    }
 }

@@ -5,9 +5,38 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+import audio.Call;
+
 public class Server {
     private static Map<String, ClientHandler> clients = new HashMap<>();
     private static Map<String, Set<String>> groups = new HashMap<>(); // Grupos de chat
+
+    //______________________________________Guao
+
+    private static Map<String, Call> activeCalls = new HashMap<>();
+
+    public static void registerCall(Call call) {
+        activeCalls.put(call.getCallId(), call);
+    }
+
+    public static Call getCall(String callId) {
+        return activeCalls.get(callId);
+    }
+
+    public static void endCall(String callId) {
+        Call call = activeCalls.remove(callId);
+        if (call != null) {
+            for (String participant : call.getParticipants()) {
+                ClientHandler handler = clients.get(participant);
+                if (handler != null) {
+                    handler.sendMessage("CALL_ENDED|" + callId);
+                }
+            }
+        }
+    }
+
+
+    //______________________________________Guao
 
     public static Map<String, ClientHandler> getClients() {
         return clients;
