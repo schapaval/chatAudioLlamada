@@ -7,6 +7,7 @@ import java.util.concurrent.BlockingQueue;
 public class PlayerThread extends Thread {
     BlockingQueue<byte[]> buffer;
     private SourceDataLine sourceDataLine;
+    private volatile boolean running = true; // Para manejar la detención del hilo
 
     public PlayerThread(AudioFormat audioFormat, int BUFFER_SIZE) {
         try {
@@ -27,8 +28,15 @@ public class PlayerThread extends Thread {
         }
     }
 
+    public void stopPlayer() {
+        running = false;
+        sourceDataLine.drain();
+        sourceDataLine.close();
+    }
+
+    @Override
     public void run() {
-        while (true) {
+        while (running) {
             try {
                 byte[] bytes = buffer.take();
                 sourceDataLine.write(bytes, 0, bytes.length);

@@ -99,7 +99,7 @@ public class Client {
             microphone.start();
 
             Thread stopper = new Thread(() -> {
-                new Scanner(System.in).nextLine();
+                new Scanner(System.in).nextLine(); // Detener la grabación cuando se presiona ENTER
                 microphone.stop();
                 microphone.close();
             });
@@ -115,10 +115,11 @@ public class Client {
         return audioFile;
     }
 
+
     // Método para enviar un archivo al servidor
     private void enviarArchivo(File file, Socket socket) {
         try {
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[4096]; // Tamaño del buffer
             OutputStream os = socket.getOutputStream();
             FileInputStream fis = new FileInputStream(file);
 
@@ -128,8 +129,10 @@ public class Client {
             }
             os.flush();
             fis.close();
+            System.out.println("Archivo enviado con éxito.");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 }

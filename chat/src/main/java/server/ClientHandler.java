@@ -4,15 +4,18 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+import audio.AudioManager;
+import audio.CallManager;
+import audio.AudioManager;
+import audio.CallManager;
+
 public class ClientHandler extends Thread {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
     private String username;
-
-    public ClientHandler(Socket socket) {
-        this.socket = socket;
-    }
+    private AudioManager audioManager;
+    private static final CallManager callManager;
 
     public String getUsername() {
         return username;
@@ -128,4 +131,75 @@ public class ClientHandler extends Thread {
             }
         }
     }
+
+    static {
+        try {
+            callManager = new CallManager(40000);
+        } catch (SocketException e) {
+            throw new RuntimeException("Failed to initialize CallManager", e);
+        }
+    }
+    
+    public ClientHandler(Socket socket) {
+        this.socket = socket;
+        try {
+            this.audioManager = new AudioManager(45000 + new Random().nextInt(1000));
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // Nuevo método para manejar llamadas
+    private void handleCall(String target) {
+        if (target.startsWith("grupo:")) {
+            String groupName = target.substring(6);
+            Set<String> participants = Server.getGroups().get(groupName);
+            if (participants != null) {
+                startGroupCall(groupName, participants);
+            } else {
+                sendMessage("Grupo no encontrado: " + groupName);
+            }
+        } else {
+            ClientHandler targetClient = Server.getClients().get(target);
+            if (targetClient != null) {
+                startPrivateCall(target);
+            } else {
+                sendMessage("Usuario no encontrado: " + target);
+            }
+        }
+    }
+    
+    private void startPrivateCall(String target) {
+        Set<String> participants = new HashSet<>(Arrays.asList(username, target));
+        String callId = UUID.randomUUID().toString();
+        
+        Map<String, InetAddress> addressMap = new HashMap<>();
+        addressMap.put(username, socket.getInetAddress());
+        addressMap.put(target, Server.getClients().get(target).socket.getInetAddress());
+        
+        callManager.startCall(callId, username, participants, addressMap);
+        sendMessage("Llamada iniciada con " + target);
+        Server.getClients().get(target).sendMessage("Llamada entrante de " + username);
+    }
+    
+    private void startGroupCall(String groupName, Set<String> participants) {
+        String callId = "group-" + UUID.randomUUID().toString();
+        
+        Map<String, InetAddress> addressMap = new HashMap<>();
+        for (String participant : participants) {
+            ClientHandler client = Server.getClients().get(participant);
+            if (client != null) {
+                addressMap.put(participant, client.socket.getInetAddress());
+            }
+        }
+        
+        callManager.startCall(callId, username, participants, addressMap);
+        for (String participant : participants) {
+            if (!participant.equals(username)) {
+                Server.getClients().get(participant)
+                    .sendMessage("Llamada grupal iniciada en " + groupName + " por " + username);
+            }
+        }
+    }
+
 }
