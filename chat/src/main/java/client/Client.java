@@ -1,4 +1,3 @@
-// Archivo: Client.java
 package client;
 
 import java.io.*;
@@ -10,13 +9,16 @@ public class Client {
     private static final String AUDIO_FORMAT = "audio.wav";
     private Socket socket;
     private PrintWriter out;
+    private boolean inCall = false;
+    private AudioInputStream audioInputStream;
+    private SourceDataLine sourceDataLine;
 
     public static void main(String[] args) {
         new Client().startClient();
     }
 
     public void startClient() {
-        String host = "localhost";
+        String host = "192.168.50.130";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
@@ -40,7 +42,7 @@ public class Client {
             System.out.println("Respuesta del servidor: " + response);
 
             // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new ReadMessages(in)).start();
+            new Thread(new ReadMessages(in, this)).start();
 
             // Hilo principal para enviar mensajes al servidor
             while (true) {
@@ -50,6 +52,9 @@ public class Client {
                 System.out.println("'/creargrupo groupname user1,user2,...' para crear un grupo");
                 System.out.println("'/audio username|groupname' para enviar una nota de voz");
                 System.out.println("'/llamada username|groupname' para realizar una llamada");
+                System.out.println("'/finllamada' para finalizar una llamada activa");
+                System.out.println("'/aceptar' para aceptar una llamada entrante");
+                System.out.println("'/rechazar' para rechazar una llamada entrante");
                 System.out.println("'salir' para desconectarse\n");
 
                 String message = scanner.nextLine();
@@ -65,8 +70,28 @@ public class Client {
                         System.out.println("Error al grabar el audio.");
                     }
                 } else if (message.startsWith("/llamada ")) {
-                    out.println(message);
-                    // Aquí puedes implementar la lógica para manejar llamadas
+                    if (!inCall) {
+                        out.println(message);
+                        System.out.println("Esperando respuesta...");
+                    } else {
+                        System.out.println("Ya estás en una llamada. Finaliza la llamada actual antes de iniciar una nueva.");
+                    }
+                } else if (message.equals("/finllamada")) {
+                    if (inCall) {
+                        endCall();
+                        out.println("/finllamada");
+                    } else {
+                        System.out.println("No estás en una llamada actualmente.");
+                    }
+                } else if (message.equals("/aceptar")) {
+                    if (!inCall) {
+                        out.println("/aceptar");
+                        startCall();
+                    } else {
+                        System.out.println("Ya estás en una llamada.");
+                    }
+                } else if (message.equals("/rechazar")) {
+                    out.println("/rechazar");
                 } else {
                     out.println(message);
                 }
@@ -85,7 +110,6 @@ public class Client {
         }
     }
 
-    // Método para grabar audio
     private static File grabarAudio() {
         File audioFile = new File("audio.wav");
         AudioFormat format = new AudioFormat(16000, 8, 2, true, true);
@@ -115,8 +139,6 @@ public class Client {
         return audioFile;
     }
 
-
-    // Método para enviar un archivo al servidor
     private void enviarArchivo(File file, Socket socket) {
         try {
             byte[] buffer = new byte[4096]; // Tamaño del buffer
@@ -135,4 +157,73 @@ public class Client {
         }
     }
 
+    public void startCall() throws IOException {
+        inCall = true;
+        System.out.println("Llamada iniciada. Hablando...");
+        
+        AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+        
+        try {
+            TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+            microphone.open(format);
+            microphone.start();
+
+            OutputStream out = socket.getOutputStream();
+            AudioInputStream ais = new AudioInputStream(microphone);
+
+            new Thread(() -> {
+                byte[] buffer = new byte[1024];
+                try {
+                    while (inCall && (ais.read(buffer) > 0)) {
+                        out.write(buffer);
+                        out.flush();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            new Thread(() -> {
+                byte[] buffer = new byte[1024];
+                try {
+                    InputStream in = socket.getInputStream();
+                    sourceDataLine = (SourceDataLine) AudioSystem.getLine(
+                        new DataLine.Info(SourceDataLine.class, format));
+                    sourceDataLine.open(format);
+                    sourceDataLine.start();
+                    while (inCall && (in.read(buffer) > 0)) {
+                        sourceDataLine.write(buffer, 0, buffer.length);
+                    }
+                } catch (IOException | LineUnavailableException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void endCall() {
+        inCall = false;
+        System.out.println("Llamada finalizada.");
+        if (sourceDataLine != null) {
+            sourceDataLine.stop();
+            sourceDataLine.close();
+        }
+    }
+
+    public void handleIncomingCall(String caller) {
+        System.out.println("\nLlamada entrante de " + caller);
+        System.out.println("Escribe '/aceptar' para aceptar la llamada o '/rechazar' para rechazarla.");
+    }
+
+    public boolean isInCall() {
+        return inCall;
+    }
+
+    public void setInCall(boolean inCall) {
+        this.inCall = inCall;
+    }
 }
