@@ -2,24 +2,23 @@ package client;
 
 import audio.PlayerThread;
 
+import javax.sound.sampled.*;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
-import javax.sound.sampled.*;
 
 public class Client {
     private Socket socket;
     private PrintWriter out;
-    private BufferedReader in;  // Para los mensajes de texto
-    private volatile boolean llamadaActiva = false;
+    private BufferedReader in;
     private DatagramSocket audioSocket;
+    private volatile boolean llamadaActiva = false;
     private static final int AUDIO_PORT = 50000;
-    private static final int BUFFER_SIZE = 1024;
+    private static final int BUFFER_SIZE = 4096;  // Tamaño del buffer aumentado para mejorar el rendimiento de audio
     private TargetDataLine microphone;
     private SourceDataLine speakers;
     private Thread audioSendThread;
     private Thread audioReceiveThread;
-    private PlayerThread playerThread;
 
     public static void main(String[] args) {
         new Client().startClient();
@@ -38,10 +37,8 @@ public class Client {
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
 
-            // Inicializar el PlayerThread para reproducir audio automáticamente
-            AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
-            playerThread = new PlayerThread(format, BUFFER_SIZE);
-            playerThread.start();
+            // Inicializar las líneas de audio (micrófono y altavoces)
+            initializeAudio();
 
             // Leer el mensaje del servidor para ingresar el username
             String serverPrompt = in.readLine();
@@ -55,7 +52,7 @@ public class Client {
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
 
-            // Iniciar el hilo para leer mensajes de texto del servidor
+            // Iniciar el hilo para leer mensajes del servidor
             new Thread(() -> readMessages()).start();
 
             // Iniciar el hilo para recibir datos de audio
@@ -92,24 +89,6 @@ public class Client {
             String message;
             while ((message = in.readLine()) != null) {
                 System.out.println("Mensaje recibido: " + message);
-
-                // Si recibimos un audio, solo mostramos el mensaje.
-                if (message.contains("Has recibido una nota de voz")) {
-                    System.out.println("Audio recibido, reproduciéndolo en breve...");
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void receiveAudio() {
-        try {
-            byte[] buffer = new byte[BUFFER_SIZE];
-            while (true) {
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                audioSocket.receive(packet);
-                playerThread.addBytes(packet.getData());  // Agregar los bytes al PlayerThread para reproducir el audio
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -119,7 +98,7 @@ public class Client {
     private void initializeAudio() {
         try {
             // Configurar formato de audio
-            AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
+            AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
 
             // Configurar micrófono
             DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
@@ -136,16 +115,7 @@ public class Client {
         }
     }
 
-    private void handleLlamada(String message) {
-        if (!llamadaActiva) {
-            String target = message.split(" ", 2)[1];
-            out.println(message);
-            startLlamada();
-        } else {
-            System.out.println("Ya hay una llamada activa.");
-        }
-    }
-
+    // Nueva implementación para enviar audio
     private void startLlamada() {
         try {
             llamadaActiva = true;
@@ -198,6 +168,30 @@ public class Client {
             stopLlamada();
         }
     }
+
+    private void receiveAudio() {
+        try {
+            byte[] buffer = new byte[BUFFER_SIZE];
+            while (true) {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                audioSocket.receive(packet);
+                speakers.write(packet.getData(), 0, packet.getLength());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleLlamada(String message) {
+        if (!llamadaActiva) {
+            String target = message.split(" ", 2)[1];
+            out.println(message);  // Enviar el comando al servidor para notificar el inicio de la llamada
+            startLlamada();  // Iniciar la llamada
+        } else {
+            System.out.println("Ya hay una llamada activa.");
+        }
+    }
+
 
     private void stopLlamada() {
         if (llamadaActiva) {
