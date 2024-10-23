@@ -10,7 +10,7 @@ import javax.sound.sampled.*;
 public class Client {
     private Socket socket;
     private PrintWriter out;
-    private BufferedReader in;  // Añadimos BufferedReader
+    private BufferedReader in;  // Para los mensajes de texto
     private volatile boolean llamadaActiva = false;
     private DatagramSocket audioSocket;
     private static final int AUDIO_PORT = 50000;
@@ -19,13 +19,14 @@ public class Client {
     private SourceDataLine speakers;
     private Thread audioSendThread;
     private Thread audioReceiveThread;
+    private PlayerThread playerThread;
 
     public static void main(String[] args) {
         new Client().startClient();
     }
 
     private void startClient() {
-        String host = "192.168.186.130";
+        String host = "localhost";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
@@ -33,13 +34,13 @@ public class Client {
             socket = new Socket(host, port);
             audioSocket = new DatagramSocket();
             out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));  // Inicializamos BufferedReader
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
 
             // Inicializar el PlayerThread para reproducir audio automáticamente
             AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
-            PlayerThread playerThread = new PlayerThread(format, BUFFER_SIZE);
+            playerThread = new PlayerThread(format, BUFFER_SIZE);
             playerThread.start();
 
             // Leer el mensaje del servidor para ingresar el username
@@ -54,30 +55,11 @@ public class Client {
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
 
-            // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        String message;
-                        while ((message = in.readLine()) != null) {  // Usar BufferedReader para leer líneas del servidor
-                            System.out.println("Mensaje recibido: " + message);
+            // Iniciar el hilo para leer mensajes de texto del servidor
+            new Thread(() -> readMessages()).start();
 
-                            // Si recibimos un audio
-                            if (message.contains("Has recibido una nota de voz")) {
-                                System.out.println("Reproduciendo audio...");
-                                byte[] buffer = new byte[BUFFER_SIZE];
-                                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-                                audioSocket.receive(packet);
-                                playerThread.addBytes(packet.getData());  // Agregar los bytes al PlayerThread
-                            }
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
+            // Iniciar el hilo para recibir datos de audio
+            new Thread(() -> receiveAudio()).start();
 
             // Hilo principal para enviar mensajes al servidor
             while (true) {
@@ -100,6 +82,35 @@ public class Client {
 
             cleanup();
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void readMessages() {
+        try {
+            String message;
+            while ((message = in.readLine()) != null) {
+                System.out.println("Mensaje recibido: " + message);
+
+                // Si recibimos un audio, solo mostramos el mensaje.
+                if (message.contains("Has recibido una nota de voz")) {
+                    System.out.println("Audio recibido, reproduciéndolo en breve...");
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void receiveAudio() {
+        try {
+            byte[] buffer = new byte[BUFFER_SIZE];
+            while (true) {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                audioSocket.receive(packet);
+                playerThread.addBytes(packet.getData());  // Agregar los bytes al PlayerThread para reproducir el audio
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -187,7 +198,6 @@ public class Client {
             stopLlamada();
         }
     }
-
 
     private void stopLlamada() {
         if (llamadaActiva) {
