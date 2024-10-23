@@ -1,5 +1,6 @@
-// Archivo: Client.java
 package client;
+
+import audio.PlayerThread;
 
 import java.io.*;
 import java.net.*;
@@ -7,25 +8,39 @@ import java.util.Scanner;
 import javax.sound.sampled.*;
 
 public class Client {
-    private static final String AUDIO_FORMAT = "audio.wav";
     private Socket socket;
     private PrintWriter out;
+    private BufferedReader in;  // Añadimos BufferedReader
+    private volatile boolean llamadaActiva = false;
+    private DatagramSocket audioSocket;
+    private static final int AUDIO_PORT = 50000;
+    private static final int BUFFER_SIZE = 1024;
+    private TargetDataLine microphone;
+    private SourceDataLine speakers;
+    private Thread audioSendThread;
+    private Thread audioReceiveThread;
 
     public static void main(String[] args) {
         new Client().startClient();
     }
 
-    public void startClient() {
-        String host = "localhost";
+    private void startClient() {
+        String host = "192.168.100.20";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
         try {
             socket = new Socket(host, port);
+            audioSocket = new DatagramSocket();
             out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));  // Inicializamos BufferedReader
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
+
+            // Inicializar el PlayerThread para reproducir audio automáticamente
+            AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
+            PlayerThread playerThread = new PlayerThread(format, BUFFER_SIZE);
+            playerThread.start();
 
             // Leer el mensaje del servidor para ingresar el username
             String serverPrompt = in.readLine();
@@ -40,99 +55,198 @@ public class Client {
             System.out.println("Respuesta del servidor: " + response);
 
             // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new ReadMessages(in)).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String message;
+                        while ((message = in.readLine()) != null) {  // Usar BufferedReader para leer líneas del servidor
+                            System.out.println("Mensaje recibido: " + message);
+
+                            // Si recibimos un audio
+                            if (message.contains("Has recibido una nota de voz")) {
+                                System.out.println("Reproduciendo audio...");
+                                byte[] buffer = new byte[BUFFER_SIZE];
+                                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                                audioSocket.receive(packet);
+                                playerThread.addBytes(packet.getData());  // Agregar los bytes al PlayerThread
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
 
             // Hilo principal para enviar mensajes al servidor
             while (true) {
-                System.out.println("\nEscribe tu mensaje:");
-                System.out.println("'/privado username mensaje' para mensaje privado");
-                System.out.println("'/grupo groupname mensaje' para mensaje de grupo");
-                System.out.println("'/creargrupo groupname user1,user2,...' para crear un grupo");
-                System.out.println("'/audio username|groupname' para enviar una nota de voz");
-                System.out.println("'/llamada username|groupname' para realizar una llamada");
-                System.out.println("'salir' para desconectarse\n");
-
+                mostrarMenu();
                 String message = scanner.nextLine();
 
-                if (message.startsWith("/audio ")) {
-                    String target = message.split(" ", 2)[1];
-                    File audioFile = grabarAudio();
-                    if (audioFile != null) {
-                        out.println("/audio " + target);
-                        enviarArchivo(audioFile, socket);
-                        System.out.println("Nota de voz enviada a " + target + ".");
-                    } else {
-                        System.out.println("Error al grabar el audio.");
-                    }
-                } else if (message.startsWith("/llamada ")) {
-                    out.println(message);
-                    // Aquí puedes implementar la lógica para manejar llamadas
+                if (message.startsWith("/llamada ")) {
+                    handleLlamada(message);
+                } else if (message.equals("colgar")) {
+                    stopLlamada();
                 } else {
                     out.println(message);
                 }
 
-                if (message.equalsIgnoreCase("salir")) {
-                    System.out.println("Desconectando del servidor...");
+                if (message.equals("salir")) {
+                    stopLlamada();
                     break;
                 }
             }
 
-            socket.close();
-            scanner.close();
+            cleanup();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    // Método para grabar audio
-    private static File grabarAudio() {
-        File audioFile = new File("audio.wav");
-        AudioFormat format = new AudioFormat(16000, 8, 2, true, true);
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+    private void initializeAudio() {
+        try {
+            // Configurar formato de audio
+            AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
 
-        try (TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info)) {
+            // Configurar micrófono
+            DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
+            microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
             microphone.open(format);
-            AudioInputStream audioInputStream = new AudioInputStream(microphone);
 
-            System.out.println("Grabando... Presiona ENTER para detener la grabación.");
+            // Configurar altavoces
+            DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
+            speakers = (SourceDataLine) AudioSystem.getLine(speakerInfo);
+            speakers.open(format);
+
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleLlamada(String message) {
+        if (!llamadaActiva) {
+            String target = message.split(" ", 2)[1];
+            out.println(message);
+            startLlamada();
+        } else {
+            System.out.println("Ya hay una llamada activa.");
+        }
+    }
+
+    private void startLlamada() {
+        try {
+            llamadaActiva = true;
             microphone.start();
+            speakers.start();
 
-            Thread stopper = new Thread(() -> {
-                new Scanner(System.in).nextLine(); // Detener la grabación cuando se presiona ENTER
-                microphone.stop();
-                microphone.close();
+            // Hilo para enviar audio
+            audioSendThread = new Thread(() -> {
+                try {
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    InetAddress serverAddress = InetAddress.getLocalHost();
+
+                    while (llamadaActiva) {
+                        int count = microphone.read(buffer, 0, buffer.length);
+                        if (count > 0) {
+                            DatagramPacket packet = new DatagramPacket(buffer, count, serverAddress, AUDIO_PORT);
+                            audioSocket.send(packet);
+                        }
+                    }
+                } catch (Exception e) {
+                    if (llamadaActiva) {
+                        e.printStackTrace();
+                    }
+                }
             });
-            stopper.start();
 
-            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, audioFile);
-            System.out.println("Grabación finalizada.");
+            // Hilo para recibir audio
+            audioReceiveThread = new Thread(() -> {
+                try {
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    while (llamadaActiva) {
+                        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                        audioSocket.receive(packet);
+                        speakers.write(packet.getData(), 0, packet.getLength());
+                    }
+                } catch (Exception e) {
+                    if (llamadaActiva) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            audioSendThread.start();
+            audioReceiveThread.start();
+
+            System.out.println("Llamada iniciada. Escribe 'colgar' para terminar.");
+
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            stopLlamada();
         }
-
-        return audioFile;
     }
 
 
-    // Método para enviar un archivo al servidor
-    private void enviarArchivo(File file, Socket socket) {
-        try {
-            byte[] buffer = new byte[4096]; // Tamaño del buffer
-            OutputStream os = socket.getOutputStream();
-            FileInputStream fis = new FileInputStream(file);
+    private void stopLlamada() {
+        if (llamadaActiva) {
+            llamadaActiva = false;
 
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                os.write(buffer, 0, bytesRead);
+            if (microphone != null) {
+                microphone.stop();
+                microphone.flush();
             }
-            os.flush();
-            fis.close();
-            System.out.println("Archivo enviado con éxito.");
+
+            if (speakers != null) {
+                speakers.stop();
+                speakers.flush();
+            }
+
+            try {
+                if (audioSendThread != null) {
+                    audioSendThread.join(1000);
+                }
+                if (audioReceiveThread != null) {
+                    audioReceiveThread.join(1000);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println("Llamada finalizada.");
+        }
+    }
+
+    private void cleanup() {
+        try {
+            stopLlamada();
+
+            if (microphone != null) {
+                microphone.close();
+            }
+            if (speakers != null) {
+                speakers.close();
+            }
+            if (audioSocket != null) {
+                audioSocket.close();
+            }
+            if (socket != null) {
+                socket.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    private void mostrarMenu() {
+        System.out.println("\nEscribe tu mensaje:");
+        System.out.println("'/privado username mensaje' para mensaje privado");
+        System.out.println("'/grupo groupname mensaje' para mensaje de grupo");
+        System.out.println("'/creargrupo groupname user1,user2,...' para crear un grupo");
+        System.out.println("'/audio username|groupname' para enviar una nota de voz");
+        System.out.println("'/llamada username|groupname' para realizar una llamada");
+        System.out.println("'colgar' para finalizar la llamada");
+        System.out.println("'salir' para desconectarse\n");
+    }
 }

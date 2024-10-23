@@ -1,3 +1,4 @@
+// AudioManager.java
 package audio;
 
 import javax.sound.sampled.*;
@@ -5,84 +6,121 @@ import java.io.*;
 import java.net.*;
 
 public class AudioManager {
-    private static final int BUFFER_SIZE = 1024;
-    private static final AudioFormat AUDIO_FORMAT = new AudioFormat(16000, 16, 1, true, false);
-    
+    private static final int BUFFER_SIZE = 4096; // Increased buffer size
+    private static final AudioFormat AUDIO_FORMAT = new AudioFormat(
+            44100.0f, // Sample rate
+            16,       // Sample size in bits
+            2,        // Channels (stereo)
+            true,     // Signed
+            true      // Big endian
+    );
+
     private DatagramSocket audioSocket;
-    private boolean isRecording = false;
-    private boolean isPlaying = false;
-    
+    private volatile boolean isRecording = false;
+    private volatile boolean isPlaying = false;
+    private TargetDataLine micLine;
+    private SourceDataLine speakerLine;
+    private int port;
+
     public AudioManager(int port) throws SocketException {
-        this.audioSocket = new DatagramSocket(port);
+        try {
+            this.port = port;
+            this.audioSocket = new DatagramSocket(port);
+            // Pre-initialize audio lines
+            DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, AUDIO_FORMAT);
+            DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, AUDIO_FORMAT);
+
+            micLine = (TargetDataLine) AudioSystem.getLine(micInfo);
+            speakerLine = (SourceDataLine) AudioSystem.getLine(speakerInfo);
+
+            // Open lines in advance
+            micLine.open(AUDIO_FORMAT);
+            speakerLine.open(AUDIO_FORMAT);
+        } catch (LineUnavailableException e) {
+            throw new RuntimeException("Failed to initialize audio system", e);
+        }
     }
-    
+
     public void startRecording(InetAddress targetAddress, int targetPort) {
         if (isRecording) return;
-        
+
         isRecording = true;
         Thread recordThread = new Thread(() -> {
             try {
-                TargetDataLine line = AudioSystem.getTargetDataLine(AUDIO_FORMAT);
-                DataLine.Info info = new DataLine.Info(TargetDataLine.class, AUDIO_FORMAT);
-                line = (TargetDataLine) AudioSystem.getLine(info);
-                line.open(AUDIO_FORMAT);
-                line.start();
-
+                micLine.start();
                 byte[] buffer = new byte[BUFFER_SIZE];
+
                 while (isRecording) {
-                    int count = line.read(buffer, 0, buffer.length);
+                    int count = micLine.read(buffer, 0, buffer.length);
                     if (count > 0) {
                         DatagramPacket packet = new DatagramPacket(buffer, count, targetAddress, targetPort);
                         audioSocket.send(packet);
                     }
                 }
-                
-                line.stop();
-                line.close();
+
+                micLine.stop();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        recordThread.setName("AudioRecordThread");
         recordThread.start();
     }
-    
-    public void stopRecording() {
-        isRecording = false;
-    }
-    
+
     public void startPlaying() {
         if (isPlaying) return;
-        
+
         isPlaying = true;
         Thread playThread = new Thread(() -> {
             try {
-                SourceDataLine line = AudioSystem.getSourceDataLine(AUDIO_FORMAT);
-                line.open(AUDIO_FORMAT);
-                line.start();
-                
+                speakerLine.start();
                 byte[] buffer = new byte[BUFFER_SIZE];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                
+
                 while (isPlaying) {
                     audioSocket.receive(packet);
-                    line.write(packet.getData(), 0, packet.getLength());
+                    speakerLine.write(packet.getData(), 0, packet.getLength());
                 }
-                
-                line.drain();
-                line.stop();
-                line.close();
+
+                speakerLine.drain();
+                speakerLine.stop();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        playThread.setName("AudioPlayThread");
         playThread.start();
     }
-    
+
+    public void stopRecording() {
+        isRecording = false;
+        if (micLine != null) {
+            micLine.stop();
+        }
+    }
+
     public void stopPlaying() {
         isPlaying = false;
+        if (speakerLine != null) {
+            speakerLine.stop();
+        }
     }
-    
+
     public void close() {
-        audioSocket.close();
+        stopRecording();
+        stopPlaying();
+        if (micLine != null) {
+            micLine.close();
+        }
+        if (speakerLine != null) {
+            speakerLine.close();
+        }
+        if (audioSocket != null && !audioSocket.isClosed()) {
+            audioSocket.close();
+        }
+    }
+
+    public int getPort() {
+        return this.port;
     }
 }

@@ -38,10 +38,14 @@ public class ClientHandler extends Thread {
                 }
             }
             socket.getOutputStream().flush();
+
+            // Enviar un mensaje indicando que el audio fue enviado correctamente.
+            out.println("Audio enviado correctamente a " + senderUsername);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 
     public void run() {
         try {
@@ -133,13 +137,9 @@ public class ClientHandler extends Thread {
     }
 
     static {
-        try {
-            callManager = new CallManager(40000);
-        } catch (SocketException e) {
-            throw new RuntimeException("Failed to initialize CallManager", e);
-        }
+        callManager = new CallManager(40000);
     }
-    
+
     public ClientHandler(Socket socket) {
         this.socket = socket;
         try {
@@ -148,7 +148,7 @@ public class ClientHandler extends Thread {
             e.printStackTrace();
         }
     }
-    
+
     // Nuevo método para manejar llamadas
     private void handleCall(String target) {
         if (target.startsWith("grupo:")) {
@@ -168,23 +168,23 @@ public class ClientHandler extends Thread {
             }
         }
     }
-    
+
     private void startPrivateCall(String target) {
         Set<String> participants = new HashSet<>(Arrays.asList(username, target));
         String callId = UUID.randomUUID().toString();
-        
+
         Map<String, InetAddress> addressMap = new HashMap<>();
         addressMap.put(username, socket.getInetAddress());
         addressMap.put(target, Server.getClients().get(target).socket.getInetAddress());
-        
+
         callManager.startCall(callId, username, participants, addressMap);
         sendMessage("Llamada iniciada con " + target);
         Server.getClients().get(target).sendMessage("Llamada entrante de " + username);
     }
-    
+
     private void startGroupCall(String groupName, Set<String> participants) {
         String callId = "group-" + UUID.randomUUID().toString();
-        
+
         Map<String, InetAddress> addressMap = new HashMap<>();
         for (String participant : participants) {
             ClientHandler client = Server.getClients().get(participant);
@@ -192,7 +192,7 @@ public class ClientHandler extends Thread {
                 addressMap.put(participant, client.socket.getInetAddress());
             }
         }
-        
+
         callManager.startCall(callId, username, participants, addressMap);
         for (String participant : participants) {
             if (!participant.equals(username)) {
@@ -200,6 +200,14 @@ public class ClientHandler extends Thread {
                     .sendMessage("Llamada grupal iniciada en " + groupName + " por " + username);
             }
         }
+    }
+
+    public InetAddress getAddress() {
+        return socket.getInetAddress();
+    }
+
+    public int getAudioPort() {
+        return audioManager.getPort();
     }
 
 }

@@ -4,11 +4,14 @@ package server;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
-    private static Map<String, ClientHandler> clients = new HashMap<>();
-    private static Map<String, Set<String>> groups = new HashMap<>(); // Grupos de chat
-
+    private static final int PORT = 12345;
+    private static final int AUDIO_PORT = 50000;
+    private static Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
+    private static Map<String, Set<String>> groups = new ConcurrentHashMap<>();
+    private static DatagramSocket audioSocket;
     public static Map<String, ClientHandler> getClients() {
         return clients;
     }
@@ -19,21 +22,53 @@ public class Server {
 
 
     public static void main(String[] args) {
-        int port = 12345;
+        try {
+            ServerSocket serverSocket = new ServerSocket(PORT);
+            audioSocket = new DatagramSocket(AUDIO_PORT);
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Servidor iniciado en el puerto " + port);
+            System.out.println("Servidor iniciado en el puerto " + PORT);
+
+            // Iniciar el hilo para manejar el audio
+            new Thread(() -> handleAudio()).start();
 
             while (true) {
-                Socket socket = serverSocket.accept();
+                Socket clientSocket = serverSocket.accept();
                 System.out.println("Nuevo cliente conectado.");
-                ClientHandler handler = new ClientHandler(socket);
-                handler.start();
+                ClientHandler clientHandler = new ClientHandler(clientSocket);
+                clientHandler.start();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+
+    private static void handleAudio() {
+        byte[] buffer = new byte[1024];
+        while (true) {
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                audioSocket.receive(packet);
+
+                // Reenviar el audio a todos los clientes conectados excepto al remitente
+                for (ClientHandler client : clients.values()) {
+                    if (!client.getAddress().equals(packet.getAddress())) {
+                        DatagramPacket forwardPacket = new DatagramPacket(
+                                packet.getData(),
+                                packet.getLength(),
+                                client.getAddress(),
+                                client.getAudioPort()
+                        );
+                        audioSocket.send(forwardPacket);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 
     // Método para enviar mensajes públicos
     public static synchronized void broadcast(String message, ClientHandler sender) {
@@ -132,4 +167,8 @@ public class Server {
             e.printStackTrace();
         }
     }
+
+
+
+
 }

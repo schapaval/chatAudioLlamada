@@ -1,0 +1,2 @@
+[Tue Oct 22 03:37:28 COT 2024] s
+[Tue Oct 22 03:37:39 COT 2024] Audio recibido: audio.wav
