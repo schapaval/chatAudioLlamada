@@ -6,6 +6,10 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Line;
+import javax.sound.sampled.Mixer;
+
 public class Server {
     private static final int PORT = 12345;
     private static final int AUDIO_PORT = 50000;
@@ -22,6 +26,17 @@ public class Server {
 
 
     public static void main(String[] args) {
+        Mixer.Info[] mixers = AudioSystem.getMixerInfo();
+        for (Mixer.Info mixerInfo : mixers) {
+            System.out.println("Available mixer: " + mixerInfo.getName());
+            Mixer mixer = AudioSystem.getMixer(mixerInfo);
+            for (Line.Info lineInfo : mixer.getSourceLineInfo()) {
+                System.out.println("Source line: " + lineInfo);
+            }
+            for (Line.Info lineInfo : mixer.getTargetLineInfo()) {
+                System.out.println("Target line: " + lineInfo);
+            }
+        }
         try {
             ServerSocket serverSocket = new ServerSocket(PORT);
             audioSocket = new DatagramSocket(AUDIO_PORT);

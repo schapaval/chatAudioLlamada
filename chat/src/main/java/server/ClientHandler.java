@@ -6,8 +6,6 @@ import java.util.*;
 
 import audio.AudioManager;
 import audio.CallManager;
-import audio.AudioManager;
-import audio.CallManager;
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -209,5 +207,4 @@ public class ClientHandler extends Thread {
     public int getAudioPort() {
         return audioManager.getPort();
     }
-
 }

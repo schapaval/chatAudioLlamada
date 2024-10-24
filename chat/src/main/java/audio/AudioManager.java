@@ -6,13 +6,13 @@ import java.io.*;
 import java.net.*;
 
 public class AudioManager {
-    private static final int BUFFER_SIZE = 4096; // Increased buffer size
+    private static final int BUFFER_SIZE = 2048; // Increased buffer size
     private static final AudioFormat AUDIO_FORMAT = new AudioFormat(
-            44100.0f, // Sample rate
-            16,       // Sample size in bits
-            2,        // Channels (stereo)
-            true,     // Signed
-            true      // Big endian
+        22050.0f, // Lower sample rate (22.05 kHz instead of 44.1 kHz)
+        16,       // 16 bits per sample
+        1,        // Mono channel instead of stereo
+        true,     // Signed
+        false     // Little endian
     );
 
     private DatagramSocket audioSocket;
@@ -32,6 +32,14 @@ public class AudioManager {
 
             micLine = (TargetDataLine) AudioSystem.getLine(micInfo);
             speakerLine = (SourceDataLine) AudioSystem.getLine(speakerInfo);
+            // Check if the lines are supported before attempting to open them
+            if (!AudioSystem.isLineSupported(micInfo)) {
+                throw new RuntimeException("Microphone line is not supported.");
+            }
+            if (!AudioSystem.isLineSupported(speakerInfo)) {
+                throw new RuntimeException("Speaker line is not supported.");
+}
+
 
             // Open lines in advance
             micLine.open(AUDIO_FORMAT);
@@ -109,10 +117,10 @@ public class AudioManager {
     public void close() {
         stopRecording();
         stopPlaying();
-        if (micLine != null) {
+        if (micLine != null && micLine.isOpen()) {
             micLine.close();
         }
-        if (speakerLine != null) {
+        if (speakerLine != null && speakerLine.isOpen()) {
             speakerLine.close();
         }
         if (audioSocket != null && !audioSocket.isClosed()) {
