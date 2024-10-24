@@ -59,7 +59,7 @@ public class Client {
                     File audioFile = grabarAudio();
                     if (audioFile != null) {
                         out.println("/audio " + target);
-                        enviarArchivo(audioFile, socket);
+                        Socket client2 = enviarArchivo(audioFile, socket);
                         System.out.println("Nota de voz enviada a " + target + ".");
                     } else {
                         System.out.println("Error al grabar el audio.");
@@ -117,7 +117,7 @@ public class Client {
 
 
     // Método para enviar un archivo al servidor
-    private void enviarArchivo(File file, Socket socket) {
+    private Socket enviarArchivo(File file, Socket socket) {
         try {
             byte[] buffer = new byte[4096]; // Tamaño del buffer
             OutputStream os = socket.getOutputStream();
@@ -126,6 +126,7 @@ public class Client {
             int bytesRead;
             while ((bytesRead = fis.read(buffer)) != -1) {
                 os.write(buffer, 0, bytesRead);
+                return this.socket;
             }
             os.flush();
             fis.close();
@@ -133,6 +134,8 @@ public class Client {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return null;
     }
+
 
 }

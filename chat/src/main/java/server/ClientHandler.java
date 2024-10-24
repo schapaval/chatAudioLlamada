@@ -25,7 +25,7 @@ public class ClientHandler extends Thread {
         out.println(message);
     }
 
-    public void sendAudio(File audioFile, String senderUsername) {
+    public void sendAudio(File audioFile, String senderUsername, Socket socket) {
         try {
             out.println("Has recibido una nota de voz de " + senderUsername + ": " + audioFile.getName());
 
@@ -88,7 +88,7 @@ public class ClientHandler extends Thread {
                         String target = splitMessage[1];
                         File audioFile = new File("audio.wav"); // Simulación del archivo de audio
                         if (Server.getClients().containsKey(target)) {
-                            Server.sendPrivateAudio(target, audioFile, this);
+                            Server.sendPrivateAudio(target, audioFile, this, socket);
                         } else if (Server.getGroups().containsKey(target)) {
                             Server.sendGroupAudio(target, audioFile, this);
                         } else {

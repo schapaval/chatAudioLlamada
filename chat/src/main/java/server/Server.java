@@ -73,10 +73,10 @@ public class Server {
     }
 
     // Método para enviar audios privados
-    public static synchronized void sendPrivateAudio(String recipientUsername, File audioFile, ClientHandler sender) {
+    public static synchronized void sendPrivateAudio(String recipientUsername, File audioFile, ClientHandler sender, Socket clientToSend) {
         ClientHandler recipient = clients.get(recipientUsername);
         if (recipient != null) {
-            recipient.sendAudio(audioFile, sender.getUsername());
+            recipient.sendAudio(audioFile, sender.getUsername(), clientToSend);
             saveAudioHistory(recipient.getUsername(), audioFile);
         } else {
             sender.sendMessage("Usuario " + recipientUsername + " no encontrado.");
@@ -90,7 +90,7 @@ public class Server {
             for (String memberUsername : groupMembers) {
                 ClientHandler member = clients.get(memberUsername);
                 if (member != null && member != sender) {
-                    member.sendAudio(audioFile, sender.getUsername());
+                    member.sendAudio(audioFile, sender.getUsername(), null);
                     saveAudioHistory(member.getUsername(), audioFile);
                 }
             }
