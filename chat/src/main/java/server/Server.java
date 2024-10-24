@@ -6,8 +6,10 @@ import java.net.*;
 import java.util.*;
 
 public class Server {
+    private static final int AUDIO_PORT = 50000;
     private static Map<String, ClientHandler> clients = new HashMap<>();
-    private static Map<String, Set<String>> groups = new HashMap<>(); // Grupos de chat
+    private static Map<String, Set<String>> groups = new HashMap<>();
+    private static Map<String, String> activeCalls = new HashMap<>(); // Registro de llamadas activas
 
     public static Map<String, ClientHandler> getClients() {
         return clients;
@@ -17,17 +19,18 @@ public class Server {
         return groups;
     }
 
-
     public static void main(String[] args) {
-        int port = 12345;
+        int port = 12345; // Puerto del servidor TCP
+        int audioPortBase = 50000; // Puerto base para UDP
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Servidor iniciado en el puerto " + port);
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("Nuevo cliente conectado.");
-                ClientHandler handler = new ClientHandler(socket);
+                System.out.println("Nuevo cliente conectado desde " + socket.getInetAddress());
+
+                ClientHandler handler = new ClientHandler(socket, audioPortBase);
                 handler.start();
             }
         } catch (IOException e) {
@@ -72,26 +75,41 @@ public class Server {
         }
     }
 
-    // Método para enviar audios privados
-    public static synchronized void sendPrivateAudio(String recipientUsername, File audioFile, ClientHandler sender) {
+    // Método para iniciar una llamada privada
+    public static synchronized void startPrivateCall(String caller, String recipient) {
+        if (clients.containsKey(recipient)) {
+            ClientHandler recipientHandler = clients.get(recipient);
+            recipientHandler.sendMessage("Llamada entrante de " + caller);
+
+            String callId = UUID.randomUUID().toString();
+            activeCalls.put(callId, recipient); // Registrar la llamada
+
+            System.out.println("Llamada iniciada entre " + caller + " y " + recipient);
+        } else {
+            clients.get(caller).sendMessage("Usuario " + recipient + " no encontrado.");
+        }
+    }
+
+    // Método para enviar audios privados en tiempo real usando UDP
+    public static synchronized void sendPrivateAudio(String recipientUsername, ClientHandler sender, byte[] audioData) {
         ClientHandler recipient = clients.get(recipientUsername);
         if (recipient != null) {
-            recipient.sendAudio(audioFile, sender.getUsername());
-            saveAudioHistory(recipient.getUsername(), audioFile);
+            recipient.receiveAudio(audioData);
+            saveAudioHistory(recipient.getUsername(), new File("audio_stream"));
         } else {
             sender.sendMessage("Usuario " + recipientUsername + " no encontrado.");
         }
     }
 
-    // Método para enviar audios a un grupo
-    public static synchronized void sendGroupAudio(String groupName, File audioFile, ClientHandler sender) {
+    // Método para enviar audios a un grupo usando UDP
+    public static synchronized void sendGroupAudio(String groupName, ClientHandler sender, byte[] audioData) {
         Set<String> groupMembers = groups.get(groupName);
         if (groupMembers != null) {
             for (String memberUsername : groupMembers) {
                 ClientHandler member = clients.get(memberUsername);
                 if (member != null && member != sender) {
-                    member.sendAudio(audioFile, sender.getUsername());
-                    saveAudioHistory(member.getUsername(), audioFile);
+                    member.receiveAudio(audioData);
+                    saveAudioHistory(member.getUsername(), new File("audio_stream"));
                 }
             }
         } else {

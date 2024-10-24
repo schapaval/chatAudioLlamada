@@ -6,8 +6,6 @@ import java.util.*;
 
 import audio.AudioManager;
 import audio.CallManager;
-import audio.AudioManager;
-import audio.CallManager;
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -16,6 +14,27 @@ public class ClientHandler extends Thread {
     private String username;
     private AudioManager audioManager;
     private static final CallManager callManager;
+
+    // Bloque estático para inicializar el CallManager
+    static {
+        callManager = new CallManager(50000); // Base port para las llamadas
+    }
+
+    // Constructor que acepta un Socket y un puerto base de audio
+    public ClientHandler(Socket socket, int baseAudioPort) {
+        this.socket = socket;
+        try {
+            // Generar un puerto dinámico para evitar conflictos
+            int dynamicPort = baseAudioPort + new Random().nextInt(1000);
+            this.audioManager = new AudioManager(dynamicPort); // Inicializa el AudioManager
+            this.audioManager.startPlaying(); // Inicia la reproducción de audio
+
+            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public String getUsername() {
         return username;
@@ -43,6 +62,18 @@ public class ClientHandler extends Thread {
         }
     }
 
+    public void receiveAudio(byte[] audioData) {
+        try {
+            OutputStream os = socket.getOutputStream();
+            os.write(audioData);
+            os.flush();
+            sendMessage("Audio recibido y reproducido correctamente.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     public void run() {
         try {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -56,100 +87,73 @@ public class ClientHandler extends Thread {
             String message;
             while ((message = in.readLine()) != null) {
                 if (message.startsWith("/privado ")) {
-                    // Enviar mensaje privado
-                    String[] splitMessage = message.split(" ", 3);
-                    if (splitMessage.length == 3) {
-                        String recipient = splitMessage[1];
-                        String privateMessage = splitMessage[2];
-                        Server.sendPrivateMessage(recipient, privateMessage, this);
-                    }
+                    handlePrivateMessage(message);
                 } else if (message.startsWith("/grupo ")) {
-                    // Enviar mensaje a grupo
-                    String[] splitMessage = message.split(" ", 3);
-                    if (splitMessage.length == 3) {
-                        String groupName = splitMessage[1];
-                        String groupMessage = splitMessage[2];
-                        Server.sendGroupMessage(groupName, groupMessage, this);
-                    }
+                    handleGroupMessage(message);
                 } else if (message.startsWith("/creargrupo ")) {
-                    // Crear grupo
-                    String[] splitMessage = message.split(" ", 3);
-                    if (splitMessage.length == 3) {
-                        String groupName = splitMessage[1];
-                        String[] members = splitMessage[2].split(",");
-                        Set<String> memberSet = new HashSet<>(Arrays.asList(members));
-                        memberSet.add(username); // Agregar al creador al grupo
-                        Server.createGroup(groupName, memberSet, this);
-                    }
+                    handleCreateGroup(message);
                 } else if (message.startsWith("/audio ")) {
-                    // Enviar audio (implementación simplificada)
-                    String[] splitMessage = message.split(" ", 2);
-                    if (splitMessage.length == 2) {
-                        String target = splitMessage[1];
-                        File audioFile = new File("audio.wav"); // Simulación del archivo de audio
-                        if (Server.getClients().containsKey(target)) {
-                            Server.sendPrivateAudio(target, audioFile, this);
-                        } else if (Server.getGroups().containsKey(target)) {
-                            Server.sendGroupAudio(target, audioFile, this);
-                        } else {
-                            sendMessage("Usuario o grupo " + target + " no encontrado.");
-                        }
-                    }
+                    handleAudioMessage(message);
                 } else if (message.startsWith("/llamada ")) {
-                    // Iniciar llamada (implementación simplificada)
-                    String[] splitMessage = message.split(" ", 2);
-                    if (splitMessage.length == 2) {
-                        String target = splitMessage[1];
-                        if (Server.getClients().containsKey(target)) {
-                            sendMessage("Iniciando llamada con " + target + "...");
-                            // Aquí puedes implementar la funcionalidad de llamadas.
-                        } else if (Server.getGroups().containsKey(target)) {
-                            sendMessage("Iniciando llamada en grupo " + target + "...");
-                            // Aquí puedes implementar la funcionalidad de llamadas en grupo.
-                        } else {
-                            sendMessage("Usuario o grupo " + target + " no encontrado.");
-                        }
-                    }
+                    handleCall(message.split(" ", 2)[1]);
                 } else if (message.equals("salir")) {
                     break;
                 } else {
-                    // Enviar mensaje público
                     Server.broadcast(message, this);
                 }
-
-                // Guardar historial del mensaje del usuario
                 Server.saveMessageHistory(username, message);
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            try {
-                socket.close();
-                Server.removeClient(username);
-            } catch (IOException e) {
-                e.printStackTrace();
+            closeConnection();
+        }
+    }
+
+    private void handlePrivateMessage(String message) {
+        String[] splitMessage = message.split(" ", 3);
+        if (splitMessage.length == 3) {
+            String recipient = splitMessage[1];
+            String privateMessage = splitMessage[2];
+            Server.sendPrivateMessage(recipient, privateMessage, this);
+        }
+    }
+
+    private void handleGroupMessage(String message) {
+        String[] splitMessage = message.split(" ", 3);
+        if (splitMessage.length == 3) {
+            String groupName = splitMessage[1];
+            String groupMessage = splitMessage[2];
+            Server.sendGroupMessage(groupName, groupMessage, this);
+        }
+    }
+
+    private void handleCreateGroup(String message) {
+        String[] splitMessage = message.split(" ", 3);
+        if (splitMessage.length == 3) {
+            String groupName = splitMessage[1];
+            String[] members = splitMessage[2].split(",");
+            Set<String> memberSet = new HashSet<>(Arrays.asList(members));
+            memberSet.add(username);
+            Server.createGroup(groupName, memberSet, this);
+        }
+    }
+
+    private void handleAudioMessage(String message) {
+        String[] splitMessage = message.split(" ", 2);
+        if (splitMessage.length == 2) {
+            String target = splitMessage[1];
+            byte[] audioData = new byte[4096];
+            if (Server.getClients().containsKey(target)) {
+                Server.sendPrivateAudio(target, this, audioData);
+            } else if (Server.getGroups().containsKey(target)) {
+                Server.sendGroupAudio(target, this, audioData);
+            } else {
+                sendMessage("Usuario o grupo " + target + " no encontrado.");
             }
         }
     }
 
-    static {
-        try {
-            callManager = new CallManager(40000);
-        } catch (SocketException e) {
-            throw new RuntimeException("Failed to initialize CallManager", e);
-        }
-    }
-    
-    public ClientHandler(Socket socket) {
-        this.socket = socket;
-        try {
-            this.audioManager = new AudioManager(45000 + new Random().nextInt(1000));
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    // Nuevo método para manejar llamadas
     private void handleCall(String target) {
         if (target.startsWith("grupo:")) {
             String groupName = target.substring(6);
@@ -168,23 +172,23 @@ public class ClientHandler extends Thread {
             }
         }
     }
-    
+
     private void startPrivateCall(String target) {
         Set<String> participants = new HashSet<>(Arrays.asList(username, target));
         String callId = UUID.randomUUID().toString();
-        
+
         Map<String, InetAddress> addressMap = new HashMap<>();
         addressMap.put(username, socket.getInetAddress());
         addressMap.put(target, Server.getClients().get(target).socket.getInetAddress());
-        
+
         callManager.startCall(callId, username, participants, addressMap);
         sendMessage("Llamada iniciada con " + target);
         Server.getClients().get(target).sendMessage("Llamada entrante de " + username);
     }
-    
+
     private void startGroupCall(String groupName, Set<String> participants) {
         String callId = "group-" + UUID.randomUUID().toString();
-        
+
         Map<String, InetAddress> addressMap = new HashMap<>();
         for (String participant : participants) {
             ClientHandler client = Server.getClients().get(participant);
@@ -192,14 +196,21 @@ public class ClientHandler extends Thread {
                 addressMap.put(participant, client.socket.getInetAddress());
             }
         }
-        
         callManager.startCall(callId, username, participants, addressMap);
         for (String participant : participants) {
             if (!participant.equals(username)) {
                 Server.getClients().get(participant)
-                    .sendMessage("Llamada grupal iniciada en " + groupName + " por " + username);
+                        .sendMessage("Llamada grupal iniciada en " + groupName + " por " + username);
             }
         }
     }
 
+    private void closeConnection() {
+        try {
+            socket.close();
+            Server.removeClient(username);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -5,44 +5,49 @@ import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 import javax.sound.sampled.*;
+import audio.AudioManager;
 
 public class Client {
-    private static final String AUDIO_FORMAT = "audio.wav";
+    private static final String AUDIO_FORMAT = "audio.wav"; // Formato de audio
     private Socket socket;
     private PrintWriter out;
+    private AudioManager audioManager;
 
     public static void main(String[] args) {
         new Client().startClient();
     }
 
     public void startClient() {
-        String host = "localhost";
-        int port = 12345;
+        String host = "localhost"; // Dirección del servidor
+        int serverPort = 12345; // Puerto del servidor
         Scanner scanner = new Scanner(System.in);
 
         try {
-            socket = new Socket(host, port);
+            // Crear un socket para conectarse al servidor (sin puerto fijo para evitar conflictos)
+            socket = new Socket(host, serverPort);
             out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            System.out.println("Conectado al servidor en " + host + ":" + port);
+            // Usar un puerto dinámico para el AudioManager
+            int localPort = socket.getLocalPort();
+            audioManager = new AudioManager(localPort);
+
+            System.out.println("Conectado al servidor en " + host + ":" + serverPort);
 
             // Leer el mensaje del servidor para ingresar el username
             String serverPrompt = in.readLine();
             System.out.println("Respuesta del servidor: " + serverPrompt);
-
-            // Enviar el username al servidor
             String username = scanner.nextLine();
             out.println(username);
 
-            // Esperar la bienvenida del servidor
+            // Confirmación del servidor
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
 
-            // Iniciar el hilo para leer mensajes del servidor
+            // Iniciar un hilo para leer mensajes entrantes del servidor
             new Thread(new ReadMessages(in)).start();
 
-            // Hilo principal para enviar mensajes al servidor
+            // Bucle principal para enviar mensajes o comandos al servidor
             while (true) {
                 System.out.println("\nEscribe tu mensaje:");
                 System.out.println("'/privado username mensaje' para mensaje privado");
@@ -54,23 +59,30 @@ public class Client {
 
                 String message = scanner.nextLine();
 
+                // Enviar audio
                 if (message.startsWith("/audio ")) {
                     String target = message.split(" ", 2)[1];
-                    File audioFile = grabarAudio();
-                    if (audioFile != null) {
-                        out.println("/audio " + target);
-                        enviarArchivo(audioFile, socket);
-                        System.out.println("Nota de voz enviada a " + target + ".");
-                    } else {
-                        System.out.println("Error al grabar el audio.");
-                    }
+                    InetAddress targetAddress = InetAddress.getByName(host);
+
+                    // Grabar y enviar el audio
+                    audioManager.startRecording(targetAddress, serverPort);
+                    System.out.println("Grabando... Presiona ENTER para detener.");
+                    scanner.nextLine(); // Esperar a que el usuario presione ENTER
+                    audioManager.stopRecording();
+                    System.out.println("Nota de voz enviada a " + target + ".");
+                    out.println("/audio " + target);
+
+                // Iniciar llamada (en desarrollo)
                 } else if (message.startsWith("/llamada ")) {
                     out.println(message);
-                    // Aquí puedes implementar la lógica para manejar llamadas
+                    System.out.println("Iniciando llamada con " + message.split(" ", 2)[1]);
+
+                // Otros comandos o mensajes generales
                 } else {
                     out.println(message);
                 }
 
+                // Salir del cliente
                 if (message.equalsIgnoreCase("salir")) {
                     System.out.println("Desconectando del servidor...");
                     break;
@@ -80,14 +92,14 @@ public class Client {
             socket.close();
             scanner.close();
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // Método para grabar audio
+    // Método para grabar audio en un archivo WAV
     private static File grabarAudio() {
-        File audioFile = new File("audio.wav");
+        File audioFile = new File(AUDIO_FORMAT);
         AudioFormat format = new AudioFormat(16000, 8, 2, true, true);
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
 
@@ -99,7 +111,7 @@ public class Client {
             microphone.start();
 
             Thread stopper = new Thread(() -> {
-                new Scanner(System.in).nextLine(); // Detener la grabación cuando se presiona ENTER
+                new Scanner(System.in).nextLine(); // Detener la grabación al presionar ENTER
                 microphone.stop();
                 microphone.close();
             });
@@ -115,11 +127,10 @@ public class Client {
         return audioFile;
     }
 
-
-    // Método para enviar un archivo al servidor
+    // Método para enviar un archivo al servidor mediante un socket
     private void enviarArchivo(File file, Socket socket) {
         try {
-            byte[] buffer = new byte[4096]; // Tamaño del buffer
+            byte[] buffer = new byte[4096];
             OutputStream os = socket.getOutputStream();
             FileInputStream fis = new FileInputStream(file);
 
@@ -134,5 +145,4 @@ public class Client {
             e.printStackTrace();
         }
     }
-
 }

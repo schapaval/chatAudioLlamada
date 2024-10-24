@@ -1,2 +1,18 @@
 [Tue Oct 22 00:36:44 COT 2024] Mensaje de grupo (epa) de espi: hablame monstro
 [Tue Oct 22 00:38:54 COT 2024] /llamada espi
+[Thu Oct 24 00:27:31 COT 2024] Mensaje pÃºblico de luis: hola
+[Thu Oct 24 00:27:35 COT 2024] Mensaje pÃºblico de luis: hola
+[Thu Oct 24 00:35:47 COT 2024] Mensaje pÃºblico de messi: hola
+[Thu Oct 24 00:35:52 COT 2024] hola
+[Thu Oct 24 00:36:10 COT 2024] Mensaje privado de messi: hola
+[Thu Oct 24 00:36:48 COT 2024] /audio messi
+[Thu Oct 24 00:38:50 COT 2024] /audio messi
+[Thu Oct 24 00:40:21 COT 2024] /audio messi
+[Thu Oct 24 01:17:26 COT 2024] Mensaje pÃºblico de lol: hola
+[Thu Oct 24 01:17:52 COT 2024] /audio lol
+[Thu Oct 24 01:17:57 COT 2024] Mensaje pÃºblico de lol: 
+[Thu Oct 24 01:20:35 COT 2024] Audio recibido: audio_stream
+[Thu Oct 24 01:22:20 COT 2024] Mensaje pÃºblico de luis: hola
+[Thu Oct 24 01:30:35 COT 2024] Audio recibido: audio_stream
+[Thu Oct 24 01:30:42 COT 2024] 
+[Thu Oct 24 01:30:43 COT 2024] 

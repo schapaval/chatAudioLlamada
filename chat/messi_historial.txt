@@ -1,0 +1,6 @@
+[Thu Oct 24 00:35:47 COT 2024] hola
+[Thu Oct 24 00:35:52 COT 2024] Mensaje pÃºblico de juan: hola
+[Thu Oct 24 00:36:10 COT 2024] /privado juan hola
+[Thu Oct 24 00:36:48 COT 2024] Audio recibido: audio_stream
+[Thu Oct 24 00:38:50 COT 2024] Audio recibido: audio_stream
+[Thu Oct 24 00:40:21 COT 2024] Audio recibido: audio_stream
