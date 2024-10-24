@@ -16,7 +16,7 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "localhost";
+        String host = "192.168.119.130";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
