@@ -86,54 +86,65 @@ public class Client {
         }
     }
 
-    // Método para grabar audio
-    private static File grabarAudio() {
-        File audioFile = new File("audio.wav");
-        AudioFormat format = new AudioFormat(16000, 8, 2, true, true);
+    // Método para grabar el audio y guardarlo en un archivo .wav
+    private File grabarAudio() {
+        File audioFile = new File(AUDIO_FORMAT);
+        AudioFormat format = new AudioFormat(16000, 16, 2, true, true);
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
 
-        try (TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info)) {
-            microphone.open(format);
-            AudioInputStream audioInputStream = new AudioInputStream(microphone);
+        try (TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info)) {
+            line.open(format);
+            line.start();
+            System.out.println("Grabando audio... Presiona Enter para detener.");
 
-            System.out.println("Grabando... Presiona ENTER para detener la grabación.");
-            microphone.start();
+            // Iniciar grabación en un hilo para que podamos detenerla al presionar Enter
+            try (AudioInputStream audioStream = new AudioInputStream(line)) {
+                new Thread(() -> {
+                    try {
+                        AudioSystem.write(audioStream, AudioFileFormat.Type.WAVE, audioFile);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
 
-            Thread stopper = new Thread(() -> {
-                new Scanner(System.in).nextLine(); // Detener la grabación cuando se presiona ENTER
-                microphone.stop();
-                microphone.close();
-            });
-            stopper.start();
-
-            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, audioFile);
-            System.out.println("Grabación finalizada.");
-        } catch (Exception e) {
+                // Espera a que el usuario presione Enter para detener
+                new Scanner(System.in).nextLine();
+                line.stop();
+                line.close();
+                System.out.println("Grabación detenida.");
+                return audioFile;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (LineUnavailableException e) {
             e.printStackTrace();
-            return null;
         }
-
-        return audioFile;
+        return null;
     }
 
-
-    // Método para enviar un archivo al servidor
-    private Socket enviarArchivo(File file, Socket socket) {
+    // Método para enviar el archivo de audio a través de un nuevo socket
+    private Socket enviarArchivo(File audioFile, Socket socket) {
         try {
-            byte[] buffer = new byte[4096]; // Tamaño del buffer
-            OutputStream os = socket.getOutputStream();
-            FileInputStream fis = new FileInputStream(file);
+            // Crear un nuevo socket en el mismo host y puerto para enviar el archivo
+            Socket fileSocket = new Socket(socket.getInetAddress(), socket.getPort());
 
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                os.write(buffer, 0, bytesRead);
-                return this.socket;
+            // Crear flujo de salida para enviar el archivo
+            try (BufferedOutputStream bos = new BufferedOutputStream(fileSocket.getOutputStream());
+                 FileInputStream fis = new FileInputStream(audioFile)) {
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    bos.write(buffer, 0, bytesRead);
+                }
+                bos.flush();
+                System.out.println("Archivo de audio enviado correctamente.");
             }
-            os.flush();
-            fis.close();
-            System.out.println("Archivo enviado con éxito.");
+
+            return fileSocket;
         } catch (IOException e) {
             e.printStackTrace();
+            System.out.println("Error al enviar el archivo de audio.");
         }
         return null;
     }
