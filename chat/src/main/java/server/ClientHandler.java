@@ -35,12 +35,15 @@ public class ClientHandler extends Thread {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
+            // Solicitar el nombre de usuario al cliente
             out.println("Introduce tu nombre de usuario:");
             username = in.readLine();
             if (username == null) {
                 socket.close();
                 return;
             }
+
+            // Registrar al cliente
             Server.registerClient(username, this);
             out.println("Bienvenido, " + username + "!");
 
@@ -64,7 +67,7 @@ public class ClientHandler extends Thread {
                         }
                     }
                 } else if (message.startsWith("/privado ")) {
-                    // Lógica existente para mensajes privados
+                    // Lógica para mensajes privados
                     String[] splitMessage = message.split(" ", 3);
                     if (splitMessage.length == 3) {
                         String recipient = splitMessage[1];
@@ -107,7 +110,9 @@ public class ClientHandler extends Thread {
             int bytesRead;
             long totalBytesRead = 0;
 
-            while (totalBytesRead < fileSize && (bytesRead = dataIn.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalBytesRead))) != -1) {
+            while (totalBytesRead < fileSize &&
+                    (bytesRead = dataIn.read(buffer, 0,
+                            (int)Math.min(buffer.length, fileSize - totalBytesRead))) != -1) {
                 fos.write(buffer, 0, bytesRead);
                 totalBytesRead += bytesRead;
             }

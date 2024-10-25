@@ -15,7 +15,7 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "192.168.1.100"; // Cambia esto por la IP de tu servidor
+        String host = "192.168.26.130"; // Cambia esto por la IP de tu servidor
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
