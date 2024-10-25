@@ -15,16 +15,13 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "192.168.26.130"; // Cambia esto por la IP de tu servidor
+        String host = "192.168.26.130"; // Asegúrate de que esta sea la IP correcta del servidor
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
 
         try {
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
-
-            // Iniciar el hilo para recibir mensajes y archivos
-            new Thread(new ReadMessages(socket)).start();
 
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
@@ -41,6 +38,9 @@ public class Client {
             // Esperar la bienvenida del servidor
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
+
+            // Iniciar el hilo para recibir mensajes y archivos después de iniciar sesión
+            new Thread(new ReadMessages(socket)).start();
 
             // Bucle principal para enviar mensajes al servidor
             while (true) {
