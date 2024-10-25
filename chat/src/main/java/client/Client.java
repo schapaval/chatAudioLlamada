@@ -1,4 +1,3 @@
-// Archivo: Client.java
 package client;
 
 import java.io.*;
@@ -16,23 +15,26 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "192.168.26.130";
+        String host = "192.168.1.100"; // Cambia esto por la IP de tu servidor
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
-        new Thread(new AudioReceptor(socket)).start();
+
         try {
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
-            
+
+            // Iniciar el hilo para recibir mensajes y archivos
+            new Thread(new ReadMessages(socket)).start();
+
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
 
-            // Leer el mensaje del servidor para ingresar el username
+            // Leer el mensaje del servidor para ingresar el nombre de usuario
             String serverPrompt = in.readLine();
             System.out.println("Respuesta del servidor: " + serverPrompt);
 
-            // Enviar el username al servidor
+            // Enviar el nombre de usuario al servidor
             String username = scanner.nextLine();
             out.println(username);
 
@@ -40,41 +42,36 @@ public class Client {
             String response = in.readLine();
             System.out.println("Respuesta del servidor: " + response);
 
-            // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new ReadMessages(in)).start();
-
-            // Hilo principal para enviar mensajes al servidor
+            // Bucle principal para enviar mensajes al servidor
             while (true) {
                 System.out.println("\nEscribe tu mensaje:");
                 System.out.println("'/privado username mensaje' para mensaje privado");
-                System.out.println("'/grupo groupname mensaje' para mensaje de grupo");
-                System.out.println("'/creargrupo groupname user1,user2,...' para crear un grupo");
-                System.out.println("'/audio username|groupname' para enviar una nota de voz");
-                System.out.println("'/llamada username|groupname' para realizar una llamada");
+                System.out.println("'/audio username' para enviar una nota de voz");
                 System.out.println("'salir' para desconectarse\n");
 
                 String message = scanner.nextLine();
 
                 if (message.startsWith("/audio ")) {
-                    String target = message.split(" ", 2)[1];
-                    File audioFile = grabarAudio();
-                    if (audioFile != null) {
-                        out.println("/audio " + target);
-                        Socket client2 = enviarArchivo(audioFile, socket);
-                        System.out.println("Nota de voz enviada a " + target + ".");
+                    String[] parts = message.split(" ", 2);
+                    if (parts.length == 2) {
+                        String target = parts[1];
+                        File audioFile = grabarAudio();
+                        if (audioFile != null) {
+                            out.println("/audio " + target);
+                            enviarArchivo(audioFile); // Enviar el archivo al servidor
+                            System.out.println("Nota de voz enviada a " + target + ".");
+                        } else {
+                            System.out.println("Error al grabar el audio.");
+                        }
                     } else {
-                        System.out.println("Error al grabar el audio.");
+                        System.out.println("Uso correcto: /audio username");
                     }
-                } else if (message.startsWith("/llamada ")) {
-                    out.println(message);
-                    // Aquí puedes implementar la lógica para manejar llamadas
+                } else if (message.equalsIgnoreCase("salir")) {
+                    System.out.println("Desconectando del servidor...");
+                    out.println("salir");
+                    break;
                 } else {
                     out.println(message);
-                }
-
-                if (message.equalsIgnoreCase("salir")) {
-                    System.out.println("Desconectando del servidor...");
-                    break;
                 }
             }
 
@@ -89,7 +86,7 @@ public class Client {
     // Método para grabar el audio y guardarlo en un archivo .wav
     private File grabarAudio() {
         File audioFile = new File(AUDIO_FORMAT);
-        AudioFormat format = new AudioFormat(16000, 16, 2, true, true);
+        AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
 
         try (TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info)) {
@@ -97,57 +94,63 @@ public class Client {
             line.start();
             System.out.println("Grabando audio... Presiona Enter para detener.");
 
-            // Iniciar grabación en un hilo para que podamos detenerla al presionar Enter
-            try (AudioInputStream audioStream = new AudioInputStream(line)) {
-                new Thread(() -> {
-                    try {
-                        AudioSystem.write(audioStream, AudioFileFormat.Type.WAVE, audioFile);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }).start();
+            // Iniciar grabación en un hilo para poder detenerla al presionar Enter
+            ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+            Thread recordingThread = new Thread(() -> {
+                byte[] buffer = new byte[4096];
+                while (!Thread.currentThread().isInterrupted()) {
+                    int bytesRead = line.read(buffer, 0, buffer.length);
+                    outStream.write(buffer, 0, bytesRead);
+                }
+            });
+            recordingThread.start();
 
-                // Espera a que el usuario presione Enter para detener
-                new Scanner(System.in).nextLine();
-                line.stop();
-                line.close();
-                System.out.println("Grabación detenida.");
-                return audioFile;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            // Esperar a que el usuario presione Enter para detener
+            new Scanner(System.in).nextLine();
+            recordingThread.interrupt();
+            line.stop();
+            line.close();
+            System.out.println("Grabación detenida.");
+
+            // Escribir el audio al archivo
+            byte[] audioData = outStream.toByteArray();
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(audioData);
+                 AudioInputStream audioInputStream = new AudioInputStream(bais, format, audioData.length / format.getFrameSize())) {
+                AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, audioFile);
             }
-        } catch (LineUnavailableException e) {
+
+            return audioFile;
+
+        } catch (LineUnavailableException | IOException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    // Método para enviar el archivo de audio a través de un nuevo socket
-    private Socket enviarArchivo(File audioFile, Socket socket) {
+    // Método para enviar el archivo de audio al servidor
+    private void enviarArchivo(File audioFile) {
         try {
-            // Crear un nuevo socket en el mismo host y puerto para enviar el archivo
-            Socket fileSocket = new Socket(socket.getInetAddress(), socket.getPort());
+            // Enviar el archivo a través del mismo socket
+            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+            FileInputStream fis = new FileInputStream(audioFile);
 
-            // Crear flujo de salida para enviar el archivo
-            try (BufferedOutputStream bos = new BufferedOutputStream(fileSocket.getOutputStream());
-                 FileInputStream fis = new FileInputStream(audioFile)) {
+            // Enviar el tamaño del archivo primero
+            long fileSize = audioFile.length();
+            dos.writeLong(fileSize);
 
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    bos.write(buffer, 0, bytesRead);
-                }
-                bos.flush();
-                System.out.println("Archivo de audio enviado correctamente.");
+            // Enviar el contenido del archivo
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                dos.write(buffer, 0, bytesRead);
             }
+            dos.flush();
+            fis.close();
+            System.out.println("Archivo de audio enviado correctamente.");
 
-            return fileSocket;
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Error al enviar el archivo de audio.");
         }
-        return null;
     }
-
-
 }
