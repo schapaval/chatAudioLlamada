@@ -19,10 +19,10 @@ public class Client {
         String host = "localhost";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
-        new Thread(new AudioReceptor(socket)).start();
         try {
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
+            new Thread(new AudioReceptor(socket)).start();
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             System.out.println("Conectado al servidor en " + host + ":" + port);

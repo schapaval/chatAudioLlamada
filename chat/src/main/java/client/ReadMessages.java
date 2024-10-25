@@ -21,7 +21,7 @@ public class ReadMessages implements Runnable {
                 System.out.println("\nMensaje recibido: " + message);
                 if (message.startsWith("Has recibido una nota")) {
                     AudioPlayer player = new AudioPlayer();
-                    player.playAudio("C:\\Users\\User\\Desktop\\chatAudioLlamada\\chat\\audio.wav");
+                    player.playAudio("audio.wav");
                 }
             }
         } catch (IOException e) {
