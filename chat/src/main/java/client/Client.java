@@ -16,10 +16,10 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "192.168.119.130";
+        String host = "localhost";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
-
+        new Thread(new AudioReceptor(socket)).start();
         try {
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);

@@ -37,6 +37,10 @@ public class ClientHandler extends Thread {
                     os.write(buffer, 0, bytesRead);
                 }
             }
+
+            for (int i = 0; i < 10000; i++){
+                System.out.println("ganemos tiempo");
+            }
             socket.getOutputStream().flush();
         } catch (IOException e) {
             e.printStackTrace();
