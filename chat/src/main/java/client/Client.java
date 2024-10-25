@@ -16,13 +16,14 @@ public class Client {
     }
 
     public void startClient() {
-        String host = "localhost";
+        String host = "172.30.193.247";
         int port = 12345;
         Scanner scanner = new Scanner(System.in);
-        new Thread(new AudioReceptor(socket)).start();
+
         try {
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
+            new Thread(new AudioReceptor(socket)).start();
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             System.out.println("Conectado al servidor en " + host + ":" + port);
