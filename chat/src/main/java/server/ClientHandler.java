@@ -90,15 +90,30 @@ public class ClientHandler extends Thread {
                     String[] splitMessage = message.split(" ", 2);
                     if (splitMessage.length == 2) {
                         String target = splitMessage[1];
-                        File audioFile = new File("audio.wav"); // Simulación del archivo de audio
                         if (Server.getClients().containsKey(target)) {
-                            Server.sendPrivateAudio(target, audioFile, this, socket);
+                            sendMessage("Enviando nota de voz a " + target + "...");
+                            Server.getClients().get(target).sendAudio(new File("audio.wav"), username, socket);
+                            Server.sendPrivateAudio(target, new File("audio.wav"), this, socket);
+
                         } else if (Server.getGroups().containsKey(target)) {
-                            Server.sendGroupAudio(target, audioFile, this);
+                            sendMessage("Enviando nota de voz al grupo " + target + "...");
+
+                            Server.getGroups().get(target).forEach(member -> {
+                                if (!member.equals(username)) {
+                                    Server.getClients().get(member).sendAudio(new File("audio.wav"), username, socket);
+                                    Server.sendPrivateAudio(member, new File("audio.wav"), this, socket);
+                                }
+                            });
+
                         } else {
                             sendMessage("Usuario o grupo " + target + " no encontrado.");
                         }
                     }
+                    // para cuando recibo un audio del otro cliente
+                } else if (message.startsWith("Has recibido una nota")) {
+                    // Reproducir audio
+                    audioManager.playAudio("received_audio.wav");
+
                 } else if (message.startsWith("/llamada ")) {
                     // Iniciar llamada (implementación simplificada)
                     String[] splitMessage = message.split(" ", 2);
@@ -106,20 +121,47 @@ public class ClientHandler extends Thread {
                         String target = splitMessage[1];
                         if (Server.getClients().containsKey(target)) {
                             sendMessage("Iniciando llamada con " + target + "...");
-                            // Aquí puedes implementar la funcionalidad de llamadas.
+                            Server.startCall(target, this);
+
                         } else if (Server.getGroups().containsKey(target)) {
                             sendMessage("Iniciando llamada en grupo " + target + "...");
-                            // Aquí puedes implementar la funcionalidad de llamadas en grupo.
+                            Server.getGroups().get(target).forEach(member -> {
+                                if (!member.equals(username)) {
+                                    Server.startCall(member, this);
+                                }
+                            });
                         } else {
                             sendMessage("Usuario o grupo " + target + " no encontrado.");
                         }
                     }
+                //para recibir la llamada
+                } else if (message.startsWith("Llamada entrante")) {
+
+                    String[] splitMessage = message.split(" ", 4);
+                    if (splitMessage.length == 4) {
+                        String caller = splitMessage[2];
+                        String response = splitMessage[3];
+                        if (response.equals("s")) {
+                            sendMessage("Llamada aceptada. Conectando...");
+
+                            Server.getClients().get(caller).sendMessage("Llamada aceptada. Conectando...");
+
+                            Server.answerCall(username, caller);
+
+                        } else {
+                            sendMessage("Llamada rechazada.");
+                        }
+                    }
+
                 } else if (message.equals("salir")) {
                     break;
                 } else {
                     // Enviar mensaje público
                     Server.broadcast(message, this);
                 }
+
+
+
 
                 // Guardar historial del mensaje del usuario
                 Server.saveMessageHistory(username, message);

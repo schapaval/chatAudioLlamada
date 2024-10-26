@@ -85,4 +85,27 @@ public class AudioManager {
     public void close() {
         audioSocket.close();
     }
+
+    public void playAudio(String s) {
+        try {
+            File audioFile = new File(s);
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile);
+            AudioFormat format = audioInputStream.getFormat();
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            SourceDataLine audioLine = (SourceDataLine) AudioSystem.getLine(info);
+            audioLine.open(format);
+            audioLine.start();
+
+            byte[] bytesBuffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = audioInputStream.read(bytesBuffer)) != -1) {
+                audioLine.write(bytesBuffer, 0, bytesRead);
+            }
+
+            audioLine.drain();
+            audioLine.close();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
+            ex.printStackTrace();
+        }
+    }
 }

@@ -132,4 +132,28 @@ public class Server {
             e.printStackTrace();
         }
     }
+
+    // Método para iniciar una llamada
+    public static synchronized void startCall(String target, ClientHandler caller) {
+        if (clients.containsKey(target)) {
+            ClientHandler targetClient = clients.get(target);
+            caller.sendMessage("Iniciando llamada con " + target + "...");
+            targetClient.sendMessage("Llamada entrante de " + caller.getUsername() + ". ¿Deseas contestar? (s/n)");
+
+        } else {
+            caller.sendMessage("Usuario " + target + " no encontrado.");
+        }
+
+    }
+
+
+
+    // Método para contestar una llamada
+    public static void answerCall(String username, String caller) {
+        ClientHandler callerHandler = clients.get(caller);
+        if (callerHandler != null) {
+            callerHandler.sendMessage(username + " ha contestado la llamada.");
+        }
+
+    }
 }

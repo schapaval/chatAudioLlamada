@@ -11,13 +11,15 @@ public class Client {
     private Socket socket;
     private PrintWriter out;
 
+    String host = "localhost";
+    int port = 12345;
+
     public static void main(String[] args) {
         new Client().startClient();
     }
 
     public void startClient() {
-        String host = "localhost";
-        int port = 12345;
+
         Scanner scanner = new Scanner(System.in);
         try {
             socket = new Socket(host, port);
@@ -61,12 +63,15 @@ public class Client {
                         out.println("/audio " + target);
                         Socket client2 = enviarArchivo(audioFile, socket);
                         System.out.println("Nota de voz enviada a " + target + ".");
+                        //metodo para el recibido de audio del cliente al que se le envia
+                        recivedAudio(client2);
                     } else {
                         System.out.println("Error al grabar el audio.");
                     }
                 } else if (message.startsWith("/llamada ")) {
                     out.println(message);
-                    // Aquí puedes implementar la lógica para manejar llamadas
+                    System.out.println("Llamada iniciada con " + message.split(" ", 2)[1]);
+                    llamada(); //metodo para llamada entre clientes
                 } else {
                     out.println(message);
                 }
@@ -82,6 +87,85 @@ public class Client {
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    //llamada entre clientes
+    private void llamada() {
+        //llamada de el cliente que la empieza y el que la recibe
+        try {
+            AudioFormat format = new AudioFormat(16000, 8, 2, true, true);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+            microphone.open(format);
+            AudioInputStream audioInputStream = new AudioInputStream(microphone);
+
+            System.out.println("Llamada iniciada. Presiona ENTER para finalizar la llamada.");
+            microphone.start();
+
+            Socket socket2 = new Socket(host, port+1);
+            OutputStream os = socket2.getOutputStream();
+            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, os);
+
+            Thread stopper = new Thread(() -> {
+                new Scanner(System.in).nextLine(); // Detener la llamada cuando se presiona ENTER
+                microphone.stop();
+                microphone.close();
+                try {
+                    os.close();
+                    socket2.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            stopper.start();
+        } catch (LineUnavailableException | IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    //recibido de audio
+    private void recivedAudio(Socket socket) {
+        try {
+            InputStream inputStream = socket.getInputStream();
+            byte[] buffer = new byte[4096];
+            File audioFile = new File("received_audio.wav");
+
+            try (FileOutputStream fos = new FileOutputStream(audioFile)) {
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
+            }
+
+            System.out.println("Audio recibido. Reproduciendo...");
+            playAudio(audioFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+
+        }
+    }
+
+    //metodo para reproducir audio
+    private void playAudio(File audioFile) {
+        try (AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile)) {
+            AudioFormat format = audioInputStream.getFormat();
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            SourceDataLine audioLine = (SourceDataLine) AudioSystem.getLine(info);
+            audioLine.open(format);
+            audioLine.start();
+
+            byte[] bytesBuffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = audioInputStream.read(bytesBuffer)) != -1) {
+                audioLine.write(bytesBuffer, 0, bytesRead);
+            }
+
+            audioLine.drain();
+            audioLine.close();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
+            ex.printStackTrace();
         }
     }
 
