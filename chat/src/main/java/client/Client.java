@@ -16,7 +16,7 @@ public class Client {
     private ExecutorService executorService;
     private volatile boolean isRunning = true;
 
-    String host = "localhost";
+    String host = "192.168.1.66";
     int port = 12345;
 
     public Client() {
