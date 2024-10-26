@@ -153,7 +153,60 @@ public class Server {
         ClientHandler callerHandler = clients.get(caller);
         if (callerHandler != null) {
             callerHandler.sendMessage(username + " ha contestado la llamada.");
+            // Iniciar hilo para grabar constantemente audio y enviarlos al cliente que nos hizo la llamada
+
+            new Thread(() -> {
+                try {
+                    ServerSocket serverSocket = new ServerSocket(12346);
+                    Socket socket = serverSocket.accept();
+                    System.out.println("Conexión establecida con " + caller);
+                    callerHandler.sendMessage("Conexión establecida con " + username);
+                    callerHandler.setSocket(socket);
+                    callerHandler.startRecording();
+                    serverSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            //escuchar la del cliente que nos hizo la llamada
+            new Thread(() -> {
+                try {
+                    ServerSocket serverSocket = new ServerSocket(12347);
+                    Socket socket = serverSocket.accept();
+                    System.out.println("Conexión establecida con " + caller);
+                    callerHandler.sendMessage("Conexión establecida con " + username);
+                    callerHandler.setSocket(socket);
+                    callerHandler.startListening();
+                    serverSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            //para terminar la llamada cuando escriban colgar
+            new Thread(() -> {
+                try {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.equalsIgnoreCase("colgar")) {
+                            callerHandler.stopRecording();
+                            callerHandler.stopListening();
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+
         }
+        else {
+            System.out.println("Cliente no encontrado");
+        }
+
 
     }
 }

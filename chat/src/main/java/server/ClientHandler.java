@@ -37,11 +37,11 @@ public class ClientHandler extends Thread {
                     os.write(buffer, 0, bytesRead);
                 }
             }
-
-            for (int i = 0; i < 10; i++){
-                System.out.println("ganemos tiempo");
-            }
             socket.getOutputStream().flush();
+
+            // Reproducir audio
+            audioManager.playAudio("received_audio.wav");
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -113,6 +113,21 @@ public class ClientHandler extends Thread {
                 } else if (message.startsWith("Has recibido una nota")) {
                     // Reproducir audio
                     audioManager.playAudio("received_audio.wav");
+
+                //para audio grupal
+                } else if (message.startsWith("/audioGrupal ")) {
+                    // Enviar audio a grupo
+                    String[] splitMessage = message.split(" ", 2);
+                    if (splitMessage.length == 2) {
+                        String groupName = splitMessage[1];
+                        if (Server.getGroups().containsKey(groupName)) {
+                            sendMessage("Enviando nota de voz al grupo " + groupName + "...");
+                            Server.sendGroupAudio(groupName, new File("audio.wav"), this);
+                        } else {
+                            sendMessage("Grupo " + groupName + " no encontrado.");
+                        }
+                    }
+
 
                 } else if (message.startsWith("/llamada ")) {
                     // Iniciar llamada (implementación simplificada)
@@ -248,4 +263,24 @@ public class ClientHandler extends Thread {
         }
     }
 
+    public void setSocket(Socket socket) {
+        this.socket = socket;
+    }
+
+
+    public void startRecording() {
+        audioManager.startRecordingCall();
+    }
+
+    public void startListening() {
+        audioManager.startListeningCall();
+    }
+
+    public void stopRecording() {
+        audioManager.stopRecordingCall();
+    }
+
+    public void stopListening() {
+        audioManager.stopListeningCall();
+    }
 }

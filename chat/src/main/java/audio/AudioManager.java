@@ -108,4 +108,70 @@ public class AudioManager {
             ex.printStackTrace();
         }
     }
+
+    public void startRecordingCall() {
+        if (isRecording) return;
+
+        isRecording = true;
+        Thread recordThread = new Thread(() -> {
+            try {
+                TargetDataLine line = AudioSystem.getTargetDataLine(AUDIO_FORMAT);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, AUDIO_FORMAT);
+                line = (TargetDataLine) AudioSystem.getLine(info);
+                line.open(AUDIO_FORMAT);
+                line.start();
+
+                byte[] buffer = new byte[BUFFER_SIZE];
+                while (isRecording) {
+                    int count = line.read(buffer, 0, buffer.length);
+                    if (count > 0) {
+                        DatagramPacket packet = new DatagramPacket(buffer, count, InetAddress.getByName("localhost"), 5000);
+                        audioSocket.send(packet);
+                    }
+                }
+
+                line.stop();
+                line.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        recordThread.start();
+    }
+
+    public void startListeningCall() {
+        if (isPlaying) return;
+
+        isPlaying = true;
+        Thread playThread = new Thread(() -> {
+            try {
+                SourceDataLine line = AudioSystem.getSourceDataLine(AUDIO_FORMAT);
+                line.open(AUDIO_FORMAT);
+                line.start();
+
+                byte[] buffer = new byte[BUFFER_SIZE];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                while (isPlaying) {
+                    audioSocket.receive(packet);
+                    line.write(packet.getData(), 0, packet.getLength());
+                }
+
+                line.drain();
+                line.stop();
+                line.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        playThread.start();
+    }
+
+    public void stopRecordingCall() {
+        isRecording = false;
+    }
+
+    public void stopListeningCall() {
+        isPlaying = false;
+    }
 }
