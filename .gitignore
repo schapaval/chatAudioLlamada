@@ -70,7 +70,9 @@ project/**/metals.sbt
 .history
 
 /vscode
+/.vscode
 
-/.idea
+
 
 /idea
+/.idea
