@@ -1,4 +1,0 @@
-[Fri Oct 25 11:11:46 COT 2024] /audio j
-[Fri Oct 25 11:17:30 COT 2024] Audio recibido: audio.wav
-[Fri Oct 25 12:03:09 COT 2024] /audio J
-[Fri Oct 25 12:06:04 COT 2024] /audio J
