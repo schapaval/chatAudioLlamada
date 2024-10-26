@@ -76,3 +76,5 @@ project/**/metals.sbt
 
 /idea
 /.idea
+
+/.gradle
