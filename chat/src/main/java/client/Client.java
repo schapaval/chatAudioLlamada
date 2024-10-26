@@ -16,6 +16,7 @@ public class Client {
     private ExecutorService executorService;
     private volatile boolean isRunning = true;
 
+    //ip y puerto del servidor
     String host = "192.168.1.66";
     int port = 12345;
 
