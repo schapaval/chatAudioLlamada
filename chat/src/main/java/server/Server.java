@@ -7,7 +7,7 @@ import java.util.*;
 
 public class Server {
     private static Map<String, ClientHandler> clients = new HashMap<>();
-    private static Map<String, Set<String>> groups = new HashMap<>(); // Grupos de chat
+    private static Map<String, Set<String>> groups = new HashMap<>();
 
     public static Map<String, ClientHandler> getClients() {
         return clients;
@@ -16,7 +16,6 @@ public class Server {
     public static Map<String, Set<String>> getGroups() {
         return groups;
     }
-
 
     public static void main(String[] args) {
         int port = 12345;
@@ -56,46 +55,14 @@ public class Server {
         }
     }
 
-    // Método para enviar mensajes a un grupo
-    public static synchronized void sendGroupMessage(String groupName, String message, ClientHandler sender) {
-        Set<String> groupMembers = groups.get(groupName);
-        if (groupMembers != null) {
-            for (String memberUsername : groupMembers) {
-                ClientHandler member = clients.get(memberUsername);
-                if (member != null && member != sender) {
-                    member.sendMessage("Mensaje de grupo (" + groupName + ") de " + sender.getUsername() + ": " + message);
-                    saveMessageHistory(member.getUsername(), "Mensaje de grupo (" + groupName + ") de " + sender.getUsername() + ": " + message);
-                }
-            }
-        } else {
-            sender.sendMessage("Grupo " + groupName + " no encontrado.");
-        }
-    }
-
     // Método para enviar audios privados
-    public static synchronized void sendPrivateAudio(String recipientUsername, File audioFile, ClientHandler sender, Socket clientToSend) {
+    public static synchronized void sendPrivateAudio(String recipientUsername, File audioFile, ClientHandler sender) {
         ClientHandler recipient = clients.get(recipientUsername);
         if (recipient != null) {
-            recipient.sendAudio(audioFile, sender.getUsername(), clientToSend);
+            recipient.sendAudio(audioFile, sender.getUsername());
             saveAudioHistory(recipient.getUsername(), audioFile);
         } else {
             sender.sendMessage("Usuario " + recipientUsername + " no encontrado.");
-        }
-    }
-
-    // Método para enviar audios a un grupo
-    public static synchronized void sendGroupAudio(String groupName, File audioFile, ClientHandler sender) {
-        Set<String> groupMembers = groups.get(groupName);
-        if (groupMembers != null) {
-            for (String memberUsername : groupMembers) {
-                ClientHandler member = clients.get(memberUsername);
-                if (member != null && member != sender) {
-                    member.sendAudio(audioFile, sender.getUsername(), null);
-                    saveAudioHistory(member.getUsername(), audioFile);
-                }
-            }
-        } else {
-            sender.sendMessage("Grupo " + groupName + " no encontrado.");
         }
     }
 
@@ -107,12 +74,6 @@ public class Server {
     // Método para eliminar clientes cuando se desconectan
     public static synchronized void removeClient(String username) {
         clients.remove(username);
-    }
-
-    // Método para crear un grupo
-    public static synchronized void createGroup(String groupName, Set<String> usernames, ClientHandler creator) {
-        groups.put(groupName, usernames);
-        creator.sendMessage("Grupo '" + groupName + "' creado exitosamente.");
     }
 
     // Método para guardar el historial de mensajes
@@ -134,79 +95,19 @@ public class Server {
     }
 
     // Método para iniciar una llamada
-    public static synchronized void startCall(String target, ClientHandler caller) {
-        if (clients.containsKey(target)) {
-            ClientHandler targetClient = clients.get(target);
-            caller.sendMessage("Iniciando llamada con " + target + "...");
-            targetClient.sendMessage("Llamada entrante de " + caller.getUsername() + ". ¿Deseas contestar? (s/n)");
-
+    public static synchronized void startCall(String targetUsername, ClientHandler caller) {
+        ClientHandler targetClient = clients.get(targetUsername);
+        if (targetClient != null) {
+            try {
+                // Enviar solicitud de llamada al cliente objetivo
+                targetClient.getOut().writeUTF("CALL_REQUEST");
+                targetClient.getOut().writeUTF(caller.getUsername());
+                targetClient.getOut().flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } else {
-            caller.sendMessage("Usuario " + target + " no encontrado.");
+            caller.sendMessage("Usuario " + targetUsername + " no encontrado.");
         }
-
-    }
-
-
-
-    // Método para contestar una llamada
-    public static void answerCall(String username, String caller) {
-        ClientHandler callerHandler = clients.get(caller);
-        if (callerHandler != null) {
-            callerHandler.sendMessage(username + " ha contestado la llamada.");
-            // Iniciar hilo para grabar constantemente audio y enviarlos al cliente que nos hizo la llamada
-
-            new Thread(() -> {
-                try {
-                    ServerSocket serverSocket = new ServerSocket(12346);
-                    Socket socket = serverSocket.accept();
-                    System.out.println("Conexión establecida con " + caller);
-                    callerHandler.sendMessage("Conexión establecida con " + username);
-                    callerHandler.setSocket(socket);
-                    callerHandler.startRecording();
-                    serverSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-
-            //escuchar la del cliente que nos hizo la llamada
-            new Thread(() -> {
-                try {
-                    ServerSocket serverSocket = new ServerSocket(12347);
-                    Socket socket = serverSocket.accept();
-                    System.out.println("Conexión establecida con " + caller);
-                    callerHandler.sendMessage("Conexión establecida con " + username);
-                    callerHandler.setSocket(socket);
-                    callerHandler.startListening();
-                    serverSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-
-            //para terminar la llamada cuando escriban colgar
-            new Thread(() -> {
-                try {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (line.equalsIgnoreCase("colgar")) {
-                            callerHandler.stopRecording();
-                            callerHandler.stopListening();
-                            break;
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-
-
-        }
-        else {
-            System.out.println("Cliente no encontrado");
-        }
-
-
     }
 }
