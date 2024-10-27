@@ -19,6 +19,10 @@ public class ClientHandler extends Thread {
         return out;
     }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
     public void sendMessage(String message) {
         try {
             out.writeUTF("MESSAGE");
@@ -99,7 +103,8 @@ public class ClientHandler extends Thread {
                         String[] splitMessage = message.split(" ", 2);
                         if (splitMessage.length == 2) {
                             String target = splitMessage[1];
-                            Server.startCall(target, this);
+                            int callerUdpPort = in.readInt(); // Leer el puerto UDP del llamante
+                            Server.startCall(target, this, callerUdpPort);
                         }
                     } else {
                         // Enviar mensaje público
@@ -107,16 +112,16 @@ public class ClientHandler extends Thread {
                     }
                     // Guardar historial del mensaje del usuario
                     Server.saveMessageHistory(username, message);
-                } else if (messageType.equals("AUDIO")) {
-                    // Manejar recepción de audio (si es necesario)
                 } else if (messageType.equals("CALL_ACCEPT")) {
                     String callerUsername = in.readUTF();
+                    String calleeIp = in.readUTF();
+                    int calleeUdpPort = in.readInt(); // Leer el puerto UDP del receptor
                     ClientHandler caller = Server.getClients().get(callerUsername);
                     if (caller != null) {
                         // Enviar información de conexión al llamante
                         caller.getOut().writeUTF("CALL_INFO");
-                        caller.getOut().writeUTF(socket.getInetAddress().getHostAddress());
-                        caller.getOut().writeInt(UDP_PORT); // Define un puerto UDP
+                        caller.getOut().writeUTF(calleeIp);
+                        caller.getOut().writeInt(calleeUdpPort); // Puerto UDP del receptor
                         caller.getOut().flush();
                     }
                 } else if (messageType.equals("CALL_REJECT")) {
@@ -159,6 +164,4 @@ public class ClientHandler extends Thread {
             e.printStackTrace();
         }
     }
-
-    private static final int UDP_PORT = 5000; // Puerto UDP para llamadas
 }

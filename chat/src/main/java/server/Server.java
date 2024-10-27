@@ -7,14 +7,9 @@ import java.util.*;
 
 public class Server {
     private static Map<String, ClientHandler> clients = new HashMap<>();
-    private static Map<String, Set<String>> groups = new HashMap<>();
 
     public static Map<String, ClientHandler> getClients() {
         return clients;
-    }
-
-    public static Map<String, Set<String>> getGroups() {
-        return groups;
     }
 
     public static void main(String[] args) {
@@ -95,13 +90,15 @@ public class Server {
     }
 
     // Método para iniciar una llamada
-    public static synchronized void startCall(String targetUsername, ClientHandler caller) {
+    public static synchronized void startCall(String targetUsername, ClientHandler caller, int callerUdpPort) {
         ClientHandler targetClient = clients.get(targetUsername);
         if (targetClient != null) {
             try {
-                // Enviar solicitud de llamada al cliente objetivo
+                // Enviar solicitud de llamada al cliente objetivo con la IP y puerto UDP del llamante
                 targetClient.getOut().writeUTF("CALL_REQUEST");
                 targetClient.getOut().writeUTF(caller.getUsername());
+                targetClient.getOut().writeUTF(caller.getSocket().getInetAddress().getHostAddress()); // IP del llamante
+                targetClient.getOut().writeInt(callerUdpPort); // Puerto UDP del llamante
                 targetClient.getOut().flush();
             } catch (IOException e) {
                 e.printStackTrace();

@@ -4,17 +4,18 @@ package client;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import javax.sound.sampled.*;
-//audios ya
-
 
 public class Client {
     private static final String AUDIO_FORMAT = "audio.wav";
     private Socket socket;
     private DataOutputStream out;
     private DataInputStream in;
-    private boolean isInCall = false;
+    private volatile boolean isInCall = false;
     private int udpPort = 6000; // Puerto UDP para recibir audio
+    private BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
 
     // IP y puerto del servidor
     String host = "192.168.29.130";
@@ -44,9 +45,36 @@ public class Client {
             System.out.println("Respuesta del servidor: " + response);
 
             // Iniciar el hilo para leer mensajes del servidor
-            new Thread(new ReadMessages(in)).start();
+            new Thread(new ReadMessages(in, messageQueue)).start();
 
             while (true) {
+                // Procesar mensajes que requieren interacción del usuario
+                String msg;
+                while ((msg = messageQueue.poll()) != null) {
+                    if (msg.startsWith("CALL_REQUEST:")) {
+                        String[] parts = msg.split(":");
+                        String callerUsername = parts[1];
+                        String callerIp = parts[2];
+                        int callerUdpPort = Integer.parseInt(parts[3]);
+                        System.out.println("\nLlamada entrante de " + callerUsername + ". ¿Aceptar? (s/n)");
+                        String responseCall = scanner.nextLine();
+                        if (responseCall.equalsIgnoreCase("s")) {
+                            out.writeUTF("CALL_ACCEPT");
+                            out.writeUTF(callerUsername);
+                            out.writeUTF(socket.getInetAddress().getHostAddress()); // Enviar nuestra IP
+                            out.writeInt(udpPort); // Enviar nuestro puerto UDP
+                            out.flush();
+                            isInCall = true;
+                            startAudioSending(callerIp, callerUdpPort);
+                            startAudioReceiving();
+                        } else {
+                            out.writeUTF("CALL_REJECT");
+                            out.writeUTF(callerUsername);
+                            out.flush();
+                        }
+                    }
+                }
+
                 printMenu();
                 String message = scanner.nextLine();
 
@@ -107,6 +135,8 @@ public class Client {
         try {
             out.writeUTF("MESSAGE");
             out.writeUTF(message);
+            out.writeInt(udpPort); // Enviar nuestro puerto UDP al servidor
+            out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -173,9 +203,11 @@ public class Client {
     // Clase interna para leer mensajes del servidor
     private class ReadMessages implements Runnable {
         private DataInputStream in;
+        private BlockingQueue<String> messageQueue;
 
-        public ReadMessages(DataInputStream in) {
+        public ReadMessages(DataInputStream in, BlockingQueue<String> messageQueue) {
             this.in = in;
+            this.messageQueue = messageQueue;
         }
 
         @Override
@@ -207,30 +239,21 @@ public class Client {
                         playAudio(audioFile);
                     } else if (messageType.equals("CALL_REQUEST")) {
                         String callerUsername = in.readUTF();
-                        System.out.println("\nLlamada entrante de " + callerUsername + ". ¿Aceptar? (s/n)");
-                        String response = new Scanner(System.in).nextLine();
-                        if (response.equalsIgnoreCase("s")) {
-                            out.writeUTF("CALL_ACCEPT");
-                            out.writeUTF(callerUsername);
-                            out.flush();
-                            isInCall = true;
-                            startAudioReceiving();
-                        } else {
-                            out.writeUTF("CALL_REJECT");
-                            out.writeUTF(callerUsername);
-                            out.flush();
-                        }
+                        String callerIp = in.readUTF();
+                        int callerUdpPort = in.readInt();
+                        messageQueue.put("CALL_REQUEST:" + callerUsername + ":" + callerIp + ":" + callerUdpPort);
                     } else if (messageType.equals("CALL_INFO")) {
                         String targetIP = in.readUTF();
-                        int targetPort = in.readInt();
+                        int targetUdpPort = in.readInt();
                         isInCall = true;
-                        startAudioSending(targetIP, targetPort);
+                        startAudioSending(targetIP, targetUdpPort);
+                        startAudioReceiving();
                     } else if (messageType.equals("CALL_END")) {
                         isInCall = false;
                         System.out.println("\nLa llamada ha terminado.");
                     }
                 }
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 System.out.println("Desconectado del servidor.");
             }
         }
