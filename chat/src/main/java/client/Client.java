@@ -17,7 +17,7 @@ public class Client {
     private volatile boolean isRunning = true;
 
     //ip y puerto del servidor
-    String host = "192.168.1.66";
+    String host = "192.168.29.130";
     int port = 12345;
 
     public Client() {
